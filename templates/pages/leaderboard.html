@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Leaderboard — Roaster AI{% endblock %}
+{% block body %}
+<div class="grid-bg"></div>
+
+<!-- Nav -->
+<nav id="main-nav">
+    <a href="/" class="nav-logo"><i class="fa-solid fa-fire" style="font-size:1.3rem;color:var(--teal)"></i><span>Roaster AI</span></a>
+    <div style="display:flex;gap:.25rem;align-items:center" class="desktop-only">
+        <a href="/chat/" class="nav-link">Chat</a>
+        <a href="/history/" class="nav-link">History</a>
+        <a href="/leaderboard/" class="nav-link active">Leaderboard</a>
+        <a href="/profile/" class="nav-link">Profile</a>
+    </div>
+    <button class="theme-btn" aria-label="Toggle theme"><i class="fa-solid fa-sun"></i></button>
+    <button onclick="toggleMobileMenu()" class="mobile-menu-btn theme-btn" style="display:none"
+        aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+</nav>
+
+<!-- Mobile menu -->
+<div id="mobile-menu"
+    style="display:none;position:fixed;top:64px;left:0;right:0;z-index:99;background:var(--bg-card);border-bottom:1px solid var(--border-subtle);padding:1rem 1.5rem;flex-direction:column;gap:.5rem">
+    <a href="/chat/" class="nav-link" style="display:block;padding:.625rem .75rem">Chat</a>
+    <a href="/history/" class="nav-link" style="display:block;padding:.625rem .75rem">History</a>
+    <a href="/leaderboard/" class="nav-link active" style="display:block;padding:.625rem .75rem">Leaderboard</a>
+    <a href="/profile/" class="nav-link" style="display:block;padding:.625rem .75rem">Profile</a>
+</div>
+
+<main style="max-width:900px;margin:0 auto;padding:5.5rem 1.5rem 4rem;position:relative;z-index:1">
+
+    <!-- Header -->
+    <div class="fade-in-up" style="text-align:center;margin-bottom:3rem">
+        <div
+            style="display:inline-flex;align-items:center;gap:.5rem;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.2);border-radius:100px;padding:.35rem 1rem;margin-bottom:1.25rem;font-size:.78rem;color:var(--teal);font-weight:600;letter-spacing:.05em">
+            <i class="fa-solid fa-trophy"></i> HALL OF FLAME
+        </div>
+        <h1 style="font-size:clamp(2rem,5vw,3rem);font-weight:900;margin-bottom:.5rem">
+            The <span class="gradient-text">Most Savage</span> Burns
+        </h1>
+        <p style="color:var(--text-secondary);font-size:.95rem">Community-voted. Ego-destroyingly good.</p>
+    </div>
+
+    <!-- Loading skeleton -->
+    <div id="loading-state" style="display:flex;flex-direction:column;gap:1rem">
+        {% for i in "12345678" %}
+        <div class="card" style="height:100px;opacity:0.3;animation:fadeInUp .4s ease"></div>
+        {% endfor %}
+    </div>
+
+    <!-- Podium (top 3) -->
+    <div id="podium"
+        style="display:none;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-bottom:2rem"></div>
+
+    <!-- Rest of list -->
+    <div id="leaderboard-list" style="display:flex;flex-direction:column;gap:.75rem"></div>
+
+    <!-- Empty state -->
+    <div id="empty-state" style="display:none;text-align:center;padding:5rem 1rem">
+        <div style="font-size:4rem;margin-bottom:1rem"><i class="fa-solid fa-trophy"></i></div>
+        <h2 style="font-size:1.4rem;font-weight:700;margin-bottom:.5rem">No public roasts yet</h2>
+        <p style="color:var(--text-secondary);margin-bottom:2rem">Be the first to share a burn from your history.</p>
+        <a href="/chat/" class="btn btn-primary"><i class="fa-solid fa-fire"></i> Get Roasted</a>
+    </div>
+
+</main>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+    const INTENSITY_COLORS = { light: '#4ADE80', medium: '#FFD93D', savage: '#FF6B35', nuclear: '#FF4757' }
+    const MEDALS = ['<i class="fa-solid fa-trophy" style="color:#FFD700"></i>', '<i class="fa-solid fa-trophy" style="color:#C0C0C0"></i>', '<i class="fa-solid fa-trophy" style="color:#CD7F32"></i>']
+    let votedIds = new Set()
+
+    // Sample fallback data shown while/if API has no public roasts yet
+    const SAMPLE_ROASTS = [
+        { id: 's1', content: "Your LinkedIn says 'entrepreneur' but your bank account says 'sponsored by mom'.", upvotes: 847, intensity: 'nuclear', persona: 'default', user_name: 'Alex K.' },
+        { id: 's2', content: "You look like you give unsolicited life advice at open mics while wearing a fedora unironically.", upvotes: 643, intensity: 'savage', persona: 'gordon', user_name: 'Jordan M.' },
+        { id: 's3', content: "Thou art the human equivalent of a footnote in history — present, yet easily ignored by all who matter.", upvotes: 589, intensity: 'savage', persona: 'shakespeare', user_name: 'Sam R.' },
+        { id: 's4', content: "Your vibe is someone who discovers a band after their breakup album and insists they were always a fan.", upvotes: 412, intensity: 'medium', persona: 'default', user_name: 'Casey L.' },
+        { id: 's5', content: "I've seen more direction in a roundabout. Bloody hell.", upvotes: 387, intensity: 'nuclear', persona: 'gordon', user_name: 'Riley P.' },
+        { id: 's6', content: "You have the energy of a browser with 47 tabs open and none of them are doing anything useful.", upvotes: 312, intensity: 'medium', persona: 'evil_ai', user_name: 'Morgan T.' },
+        { id: 's7', content: "Your personality arrives 15 minutes late, then asks everyone what they missed.", upvotes: 278, intensity: 'savage', persona: 'parent', user_name: 'Drew S.' },
+        { id: 's8', content: "Even the heat death of the universe finds your story arc underwhelming.", upvotes: 201, intensity: 'nuclear', persona: 'evil_ai', user_name: 'Quinn A.' },
+    ]
+
+    async function fetchLeaderboard() {
+        try {
+            const res = await fetch('/api/roasts/leaderboard/', { credentials: 'include' })
+            const data = await res.json()
+            const roasts = data.roasts?.length ? data.roasts : SAMPLE_ROASTS
+            render(roasts)
+        } catch {
+            render(SAMPLE_ROASTS)
+        }
+    }
+
+    function render(roasts) {
+        document.getElementById('loading-state').style.display = 'none'
+
+        if (!roasts.length) {
+            document.getElementById('empty-state').style.display = 'block'
+            return
+        }
+
+        const top3 = roasts.slice(0, 3)
+        const rest = roasts.slice(3)
+
+        // Podium
+        const podium = document.getElementById('podium')
+        podium.style.display = 'grid'
+        top3.forEach((r, i) => podium.appendChild(createPodiumCard(r, i)))
+
+        // Rest
+        const list = document.getElementById('leaderboard-list')
+        rest.forEach((r, i) => list.appendChild(createRow(r, i + 4)))
+    }
+
+    function createPodiumCard(r, i) {
+        const div = document.createElement('div')
+        div.className = `card rank-${i + 1}`
+        div.style.cssText = 'padding:1.5rem;border:1px solid;border-radius:14px;position:relative;overflow:hidden;animation:fadeInUp .4s ease;transition:all .2s'
+        div.onmouseover = () => { div.style.transform = 'translateY(-3px)' }
+        div.onmouseout = () => { div.style.transform = 'translateY(0)' }
+
+        const intensity = r.intensity || 'medium'
+        const color = INTENSITY_COLORS[intensity] || 'var(--text-muted)'
+        const name = r.user_name || r.conversation?.user?.name || 'Anonymous'
+
+        div.innerHTML = `
+    <div style="position:absolute;top:1rem;right:1rem;font-size:1.8rem">${MEDALS[i]}</div>
+    <div style="margin-bottom:.75rem">
+      <span style="font-size:.7rem;color:${color};background:var(--bg-surface);border:1px solid ${color};border-radius:100px;padding:.18rem .55rem">${intensity}</span>
+    </div>
+    <p style="font-size:.9rem;line-height:1.7;margin-bottom:1rem;padding-right:2.5rem;color:var(--text-primary)">${escHtml(r.content)}</p>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:.78rem;color:var(--text-muted)">— ${escHtml(name)}</span>
+      ${voteBtn(r.id, r.upvotes, votedIds.has(r.id))}
+    </div>`
+        div.querySelector('.vote-btn').addEventListener('click', () => handleVote(r.id, div))
+        return div
+    }
+
+    function createRow(r, rank) {
+        const div = document.createElement('div')
+        div.className = 'card'
+        div.style.cssText = 'padding:1rem 1.25rem;display:flex;gap:1rem;align-items:center;border:1px solid var(--border-subtle);transition:all .2s;animation:fadeInUp .3s ease'
+        div.onmouseover = () => { div.style.borderColor = 'rgba(0,212,170,.15)' }
+        div.onmouseout = () => { div.style.borderColor = 'var(--border-subtle)' }
+
+        const intensity = r.intensity || 'medium'
+        const color = INTENSITY_COLORS[intensity] || 'var(--text-muted)'
+        const name = r.user_name || r.conversation?.user?.name || 'Anonymous'
+
+        div.innerHTML = `
+    <div style="font-size:.875rem;font-weight:700;color:var(--text-muted);min-width:28px;text-align:center">#${rank}</div>
+    <div style="flex:1;min-width:0">
+      <p style="font-size:.9rem;line-height:1.6;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${escHtml(r.content)}</p>
+      <div style="display:flex;gap:.5rem;margin-top:.35rem;align-items:center;flex-wrap:wrap">
+        <span style="font-size:.7rem;color:var(--text-muted)">— ${escHtml(name)}</span>
+        <span style="font-size:.7rem;color:${color};background:var(--bg-surface);border:1px solid ${color};border-radius:100px;padding:.1rem .45rem">${intensity}</span>
+      </div>
+    </div>
+    ${voteBtn(r.id, r.upvotes, votedIds.has(r.id))}`
+        div.querySelector('.vote-btn').addEventListener('click', () => handleVote(r.id, div))
+        return div
+    }
+
+    function voteBtn(id, count, voted) {
+        return `<button class="vote-btn" data-id="${id}" data-voted="${voted}" style="background:${voted ? 'var(--teal-glow)' : 'var(--bg-surface)'};border:1px solid ${voted ? 'var(--teal)' : 'var(--border-subtle)'};border-radius:8px;padding:.4rem .75rem;cursor:pointer;display:flex;align-items:center;gap:.35rem;font-size:.875rem;color:${voted ? 'var(--teal)' : 'var(--text-secondary)'};transition:all .2s;flex-shrink:0;font-family:'Inter',sans-serif">
+    <i class="fa-solid fa-fire"></i> <span class="vote-count">${count}</span>
+  </button>`
+    }
+
+    async function handleVote(id, container) {
+        const btn = container.querySelector(`.vote-btn[data-id="${id}"]`)
+        if (!btn) return
+
+        const isVoted = btn.dataset.voted === 'true'
+        const countEl = btn.querySelector('.vote-count')
+        const newCount = parseInt(countEl.textContent) + (isVoted ? -1 : 1)
+
+        // Optimistic update
+        btn.dataset.voted = (!isVoted).toString()
+        countEl.textContent = newCount
+        btn.style.background = !isVoted ? 'var(--teal-glow)' : 'var(--bg-surface)'
+        btn.style.borderColor = !isVoted ? 'var(--teal)' : 'var(--border-subtle)'
+        btn.style.color = !isVoted ? 'var(--teal)' : 'var(--text-secondary)'
+        if (!isVoted) votedIds.add(id); else votedIds.delete(id)
+
+        try {
+            await fetch('/api/roasts/upvote/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                credentials: 'include',
+                body: JSON.stringify({ messageId: id }),
+            })
+        } catch {
+            // Revert on failure
+            btn.dataset.voted = isVoted.toString()
+            countEl.textContent = newCount + (isVoted ? 1 : -1)
+            showToast('Failed to vote. Try again.', 'error')
+        }
+    }
+
+    function toggleMobileMenu() {
+        const m = document.getElementById('mobile-menu')
+        m.style.display = m.style.display === 'none' ? 'flex' : 'none'
+    }
+
+    function escHtml(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    }
+
+    fetchLeaderboard()
+</script>
+{% endblock %}

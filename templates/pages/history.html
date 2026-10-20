@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Roast History — Roaster AI{% endblock %}
+{% block body %}
+<div class="grid-bg"></div>
+
+<nav id="main-nav">
+  <a href="/" class="nav-logo"><i class="fa-solid fa-fire" style="font-size:1.3rem;color:var(--teal)"></i><span>Roaster AI</span></a>
+  <div style="display:flex;gap:.25rem;align-items:center" class="desktop-only">
+    <a href="/chat/" class="nav-link">Chat</a>
+    <a href="/history/" class="nav-link active">History</a>
+    <a href="/leaderboard/" class="nav-link">Leaderboard</a>
+    <a href="/profile/" class="nav-link">Profile</a>
+  </div>
+  <button class="theme-btn" aria-label="Toggle theme"><i class="fa-solid fa-sun"></i></button>
+</nav>
+
+<main style="max-width:860px;margin:0 auto;padding:5.5rem 1.5rem 3rem;position:relative;z-index:1">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem">
+    <div>
+      <h1 style="font-size:2rem;font-weight:800;margin-bottom:.25rem"><i class="fa-solid fa-clock-rotate-left"></i> Roast History</h1>
+      <p style="color:var(--text-secondary);font-size:.875rem">All your burns, preserved for eternity.</p>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <button id="fav-toggle" onclick="toggleFavFilter()" class="btn btn-ghost" style="font-size:.85rem;padding:.5rem 1rem"><i class="fa-regular fa-heart"></i> All Roasts</button>
+      <button onclick="confirmClear()" class="btn btn-danger" style="font-size:.85rem;padding:.5rem 1rem"><i class="fa-solid fa-trash"></i> Clear All</button>
+    </div>
+  </div>
+
+  <div id="roast-list" style="display:flex;flex-direction:column;gap:1rem"></div>
+  <div id="loading-state" style="display:flex;flex-direction:column;gap:1rem">
+    {% for i in "12345" %}<div class="card" style="height:110px;opacity:.3;animation:fadeInUp .4s ease"></div>{% endfor %}
+  </div>
+  <div id="empty-state" style="display:none;text-align:center;padding:4rem 1rem">
+    <div style="font-size:4rem;margin-bottom:1rem"><i class="fa-solid fa-circle-exclamation"></i></div>
+    <h2 id="empty-title" style="font-size:1.4rem;font-weight:700;margin-bottom:.5rem">No roasts yet</h2>
+    <p id="empty-sub" style="color:var(--text-secondary);margin-bottom:2rem">You haven't been roasted yet. Lucky you.</p>
+    <a href="/chat/" class="btn btn-primary"><i class="fa-solid fa-fire"></i> Get Roasted</a>
+  </div>
+  <div id="pagination" style="display:none;justify-content:center;gap:.5rem;margin-top:2rem;align-items:center"></div>
+</main>
+
+<script>
+let page = 1, totalPages = 1, favOnly = false
+
+Auth.requireAuth()
+
+const INTENSITY_EMOJI = {light:'<i class="fa-regular fa-face-smile-wink"></i>',medium:'<i class="fa-regular fa-face-angry"></i>',savage:'<i class="fa-solid fa-fire"></i>',nuclear:'<i class="fa-solid fa-skull-crossbones"></i>'}
+const PERSONA_LABEL = {default:'<i class="fa-solid fa-robot"></i> Default',gordon:'<i class="fa-solid fa-utensils"></i> Gordon',parent:'<i class="fa-solid fa-heart-crack"></i> Parent',shakespeare:'<i class="fa-solid fa-masks-theater"></i> Shakespeare','4chan':'<i class="fa-solid fa-skull"></i> 4chan',evil_ai:'<i class="fa-solid fa-virus"></i> Evil AI'}
+
+async function fetchHistory() {
+  document.getElementById('loading-state').style.display = 'flex'
+  document.getElementById('roast-list').innerHTML = ''
+  document.getElementById('empty-state').style.display = 'none'
+  document.getElementById('pagination').style.display = 'none'
+
+  const res = await fetch(`/api/chat/history/?page=${page}&favorites=${favOnly}`, { credentials: 'include' })
+  if (res.status === 401) { window.location.href = '/login/'; return }
+  const data = await res.json()
+
+  document.getElementById('loading-state').style.display = 'none'
+  totalPages = data.pages || 1
+
+  if (!data.messages?.length) {
+    document.getElementById('empty-state').style.display = 'block'
+    if (favOnly) {
+      document.getElementById('empty-title').textContent = 'No favorites yet'
+      document.getElementById('empty-sub').textContent = 'Save your best burns with the heart button.'
+    }
+    return
+  }
+
+  const list = document.getElementById('roast-list')
+  data.messages.forEach(m => list.appendChild(createCard(m)))
+
+  if (totalPages > 1) renderPagination()
+}
+
+function createCard(m) {
+  const card = document.createElement('div')
+  card.className = 'card'
+  card.style.cssText = 'padding:1.25rem;transition:all .2s;animation:fadeInUp .3s ease'
+  card.onmouseover = () => card.style.borderColor = 'rgba(0,212,170,.15)'
+  card.onmouseout = () => card.style.borderColor = 'var(--border-subtle)'
+
+  const date = new Date(m.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+  const intensity = m.conversation?.intensity || 'medium'
+  const persona = m.conversation?.persona || 'default'
+  const isLong = m.content.length > 220
+  const shortContent = isLong ? m.content.slice(0,220) + '…' : m.content
+
+  card.innerHTML = `
+    <div style="display:flex;gap:.5rem;margin-bottom:.875rem;flex-wrap:wrap;align-items:center">
+      <span style="font-size:.72rem;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:100px;padding:.2rem .6rem;color:var(--text-muted)">${INTENSITY_EMOJI[intensity]||'🔥'} ${intensity}</span>
+      <span style="font-size:.72rem;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:100px;padding:.2rem .6rem;color:var(--text-muted)">${PERSONA_LABEL[persona]||'🤖 Default'}</span>
+      <span style="margin-left:auto;font-size:.72rem;color:var(--text-muted)">${date}</span>
+    </div>
+    <p id="content-${m.id}" style="font-size:.925rem;line-height:1.7;color:var(--text-primary)">${escHtml(shortContent)}</p>
+    ${isLong ? `<button onclick="toggleExpand(${m.id},'${escAttr(m.content)}')" id="expand-btn-${m.id}" style="background:none;border:none;cursor:pointer;color:var(--teal);font-size:.8rem;margin-top:.375rem;padding:0;font-family:'Inter',sans-serif">Show more</button>` : ''}
+    <div style="display:flex;gap:.5rem;margin-top:1rem;border-top:1px solid var(--border-subtle);padding-top:.875rem">
+      <button onclick="toggleFav(this,${m.id})" style="background:transparent;border:1px solid var(--border-subtle);border-radius:6px;padding:.3rem .75rem;cursor:pointer;font-size:.78rem;color:${m.favorited?'var(--teal)':'var(--text-secondary)'};display:flex;align-items:center;gap:.35rem;transition:all .15s;font-family:'Inter',sans-serif" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border-subtle)'">
+        ${m.favorited?'<i class="fa-solid fa-heart"></i> Saved':'<i class="fa-regular fa-heart"></i> Save'}
+      </button>
+      <button onclick="copyRoast('${escAttr(m.content)}')" style="background:transparent;border:1px solid var(--border-subtle);border-radius:6px;padding:.3rem .75rem;cursor:pointer;font-size:.78rem;color:var(--text-secondary);display:flex;align-items:center;gap:.35rem;transition:all .15s;font-family:'Inter',sans-serif" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border-subtle)'"><i class="fa-regular fa-copy"></i> Copy</button>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:.25rem;font-size:.78rem;color:var(--text-muted)"><i class="fa-solid fa-fire"></i> ${m.upvotes||0}</div>
+    </div>`
+  return card
+}
+
+function toggleExpand(id, fullContent) {
+  const el = document.getElementById(`content-${id}`)
+  const btn = document.getElementById(`expand-btn-${id}`)
+  const expanded = btn.textContent === 'Show less'
+  el.textContent = expanded ? fullContent.slice(0,220)+'…' : fullContent
+  btn.textContent = expanded ? 'Show more' : 'Show less'
+}
+
+async function toggleFav(btn, id) {
+  const res = await fetch('/api/roasts/favorite/', {
+    method: 'POST', headers: {'Content-Type':'application/json','X-CSRFToken':getCsrfToken()},
+    credentials: 'include', body: JSON.stringify({messageId: id})
+  })
+  const data = await res.json()
+  btn.innerHTML = data.favorited ? '<i class="fa-solid fa-heart"></i> Saved' : '<i class="fa-regular fa-heart"></i> Save'
+  btn.style.color = data.favorited ? 'var(--teal)' : 'var(--text-secondary)'
+}
+
+async function copyRoast(text) {
+  await navigator.clipboard.writeText(text)
+  showToast('Copied!', 'success')
+}
+
+function toggleFavFilter() {
+  favOnly = !favOnly; page = 1
+  const btn = document.getElementById('fav-toggle')
+  btn.innerHTML = favOnly ? '<i class="fa-solid fa-heart"></i> Favorites' : '<i class="fa-regular fa-heart"></i> All Roasts'
+  btn.className = favOnly ? 'btn' : 'btn btn-ghost'
+  if (favOnly) { btn.style.background='var(--teal-glow)'; btn.style.borderColor='var(--teal)'; btn.style.color='var(--teal)' }
+  else { btn.style.background=''; btn.style.borderColor=''; btn.style.color='' }
+  fetchHistory()
+}
+
+async function confirmClear() {
+  if (!confirm('Delete your entire roast history? This is permanent.')) return
+  await fetch('/api/chat/history/clear/', {method:'DELETE',headers:{'X-CSRFToken':getCsrfToken()},credentials:'include'})
+  document.getElementById('roast-list').innerHTML = ''
+  document.getElementById('empty-state').style.display = 'block'
+}
+
+function renderPagination() {
+  const el = document.getElementById('pagination')
+  el.style.display = 'flex'
+  el.innerHTML = `
+    <button onclick="changePage(page-1)" ${page===1?'disabled':''} style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:7px;padding:.5rem 1rem;cursor:pointer;opacity:${page===1?.4:1};color:var(--text-secondary);font-size:.875rem;font-family:'Inter',sans-serif">← Prev</button>
+    <span style="display:flex;align-items:center;padding:0 1rem;font-size:.875rem;color:var(--text-secondary)">${page} / ${totalPages}</span>
+    <button onclick="changePage(page+1)" ${page===totalPages?'disabled':''} style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:7px;padding:.5rem 1rem;cursor:pointer;opacity:${page===totalPages?.4:1};color:var(--text-secondary);font-size:.875rem;font-family:'Inter',sans-serif">Next →</button>`
+}
+
+function changePage(p) { if (p<1||p>totalPages) return; page=p; fetchHistory() }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function escAttr(s) { return String(s).replace(/'/g,'&#39;').replace(/\n/g,' ').slice(0,200) }
+
+fetchHistory()
+</script>
+{% endblock %}

@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Chat — Roaster AI{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/chat.css' %}" />
+{% endblock %}
+
+{% block body %}
+<div class="chat-layout">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="chat-sidebar">
+        <div class="sidebar-header">
+            <a href="/" class="sidebar-logo">
+                <i class="fa-solid fa-fire"></i>
+                <span>Roaster AI</span>
+            </a>
+            <button onclick="toggleSidebar()" class="theme-btn" id="sidebar-close" style="display:none"
+                aria-label="Close sidebar">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="sidebar-nav-section">
+            <a href="/chat/" class="active"><i class="fa-solid fa-message"></i><span>Chat</span></a>
+            <a href="/history/"><i class="fa-solid fa-clock-rotate-left"></i><span>History</span></a>
+            <a href="/leaderboard/"><i class="fa-solid fa-trophy"></i><span>Leaderboard</span></a>
+            <a href="/profile/"><i class="fa-solid fa-user"></i><span>Profile</span></a>
+        </div>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-settings">
+            <div class="settings-label">Session Settings</div>
+
+            <!-- Intensity -->
+            <div class="settings-label" style="margin-top:.25rem">Intensity</div>
+            <div class="intensity-grid">
+                <button class="intensity-btn" data-val="light" onclick="setIntensity('light')">
+                    <div class="intensity-icon"><i class="fa-regular fa-face-smile-wink"></i></div>
+                    <div class="intensity-label">Light</div>
+                </button>
+                <button class="intensity-btn active" data-val="medium" onclick="setIntensity('medium')">
+                    <div class="intensity-icon"><i class="fa-regular fa-face-angry"></i></div>
+                    <div class="intensity-label">Medium</div>
+                </button>
+                <button class="intensity-btn" data-val="savage" onclick="setIntensity('savage')">
+                    <div class="intensity-icon"><i class="fa-solid fa-fire"></i></div>
+                    <div class="intensity-label">Savage</div>
+                </button>
+                <button class="intensity-btn" data-val="nuclear" onclick="setIntensity('nuclear')">
+                    <div class="intensity-icon"><i class="fa-solid fa-skull-crossbones"></i></div>
+                    <div class="intensity-label">Nuclear</div>
+                </button>
+            </div>
+
+            <!-- Persona -->
+            <div class="settings-label">Persona</div>
+            <select class="persona-select" id="persona-select" onchange="persona=this.value">
+                <option value="default">🤖 Default AI</option>
+                <option value="gordon">🍳 Gordon Ramsay</option>
+                <option value="parent">😔 Disappointed Parent</option>
+                <option value="shakespeare">🎭 Shakespeare</option>
+                <option value="4chan">💀 4chan Energy</option>
+                <option value="evil_ai">👾 Evil AI</option>
+            </select>
+
+            <!-- Bio -->
+            <button onclick="toggleBio()" class="btn btn-ghost"
+                style="width:100%;padding:.45rem .75rem;font-size:.8rem;margin-bottom:.5rem;justify-content:flex-start;gap:.5rem">
+                <i class="fa-solid fa-pen-to-square"></i><span id="bio-btn-label">Add Personal Bio</span>
+            </button>
+            <div id="bio-area" style="display:none">
+                <textarea id="bio-input" class="input" placeholder="Tell the AI about yourself for personal burns..."
+                    style="font-size:.8rem;min-height:75px;margin-bottom:.5rem"></textarea>
+            </div>
+
+            <button onclick="clearChat()" class="btn btn-danger" style="width:100%;padding:.45rem;font-size:.8rem">
+                <i class="fa-solid fa-trash"></i> Clear Chat
+            </button>
+
+            <div style="height:1px;background:rgba(255,255,255,.05);margin:.75rem 0"></div>
+
+            <button onclick="handleLogout()" class="btn btn-ghost"
+                style="width:100%;padding:.45rem;font-size:.8rem;justify-content:flex-start;gap:.5rem;color:var(--text-muted)">
+                <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+            </button>
+        </div>
+    </aside>
+
+    <!-- Sidebar overlay -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Main -->
+    <div class="chat-main">
+
+        <!-- Header -->
+        <header class="chat-header">
+            <button onclick="toggleSidebar()" class="mobile-menu-btn theme-btn" style="display:none" aria-label="Menu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="chat-agent-info">
+                <div class="chat-agent-avatar">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div>
+                    <div class="chat-agent-name">Roaster AI</div>
+                    <div class="chat-status" id="status-line">
+                        <span class="status-dot"></span>
+                        Online · Medium mode
+                    </div>
+                </div>
+            </div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:.5rem">
+                <button class="theme-btn" aria-label="Toggle theme"><i class="fa-solid fa-sun"></i></button>
+                <a href="/history/" class="btn btn-ghost" style="padding:.4rem .875rem;font-size:.78rem">History</a>
+            </div>
+        </header>
+
+        <!-- Messages -->
+        <div id="messages"></div>
+
+        <!-- Input bar -->
+        <div class="chat-input-bar">
+            <div id="image-preview" class="image-preview-strip">
+                <img id="preview-img" src="" alt="Preview" class="preview-thumb" />
+                <div class="preview-info">
+                    <div class="preview-label"><i class="fa-solid fa-camera"></i> Photo attached — prepare to be
+                        destroyed</div>
+                    <div class="preview-filename" id="preview-name"></div>
+                </div>
+                <button onclick="removeImage()" class="preview-remove" title="Remove">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="input-row">
+                <input type="file" id="img-input" accept="image/*" style="display:none"
+                    onchange="handleImageFile(this.files[0])" />
+                <button onclick="document.getElementById('img-input').click()" class="input-upload-btn"
+                    title="Upload photo">
+                    <i class="fa-solid fa-camera"></i>
+                </button>
+
+                <div class="input-textarea-wrap">
+                    <textarea id="msg-input" placeholder="Say something... or just send your photo" rows="1"
+                        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"
+                        onkeydown="handleKey(event)"></textarea>
+                    <span class="input-hint">↵</span>
+                </div>
+
+                <button id="send-btn" onclick="sendMessage()" class="btn btn-primary send-btn" title="Send">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+                <button id="stop-btn" onclick="stopStream()" class="stop-btn" title="Stop">
+                    <i class="fa-solid fa-stop"></i>
+                </button>
+            </div>
+            <div class="input-footer">Shift+Enter for new line · Enter to send · Roaster can tend to be offensive,so
+                bear with it.</div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    let messages = [], intensity = 'medium', persona = 'default', conversationId = null, imageData = null, abortCtrl = null
+
+    const messagesEl = document.getElementById('messages')
+    const inputEl = document.getElementById('msg-input')
+
+    Auth.getUser().then(user => {
+        if (!user) window.location.href = '/login/'
+        else addWelcomeMessage()
+    })
+
+    function addWelcomeMessage() {
+        const welcomes = [
+            "oh you actually showed up. bold choice.",
+            "look who decided to log on. i've seen better decisions but not many.",
+            "another one walks in voluntarily. i respect the confidence. i don't respect much else yet, but we'll see.",
+            "you're here. great. this is either going to be very funny or very humbling — for you.",
+            "ah, a new victim. i mean — welcome. same thing really.",
+        ]
+        const msg = welcomes[Math.floor(Math.random() * welcomes.length)]
+        const row = appendMessage('assistant', msg)
+        row.classList.add('welcome-msg')
+    }
+
+    function setIntensity(val) {
+        intensity = val
+        document.querySelectorAll('.intensity-btn').forEach(b => {
+            const active = b.dataset.val === val
+            b.classList.toggle('active', active)
+            b.querySelector('.intensity-label').style.color = active ? 'var(--teal)' : ''
+        })
+        document.getElementById('status-line').innerHTML =
+            `<span class="status-dot"></span> Online · ${val.charAt(0).toUpperCase() + val.slice(1)} mode`
+    }
+
+    function toggleBio() {
+        const area = document.getElementById('bio-area')
+        const label = document.getElementById('bio-btn-label')
+        const shown = area.style.display !== 'none'
+        area.style.display = shown ? 'none' : 'block'
+        label.textContent = shown ? 'Add Personal Bio' : 'Hide Bio'
+    }
+
+    function toggleSidebar() {
+        const sb = document.getElementById('sidebar')
+        const ov = document.getElementById('sidebar-overlay')
+        const open = sb.classList.toggle('open')
+        ov.style.display = open ? 'block' : 'none'
+    }
+
+    function handleKey(e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+    }
+
+    function handleImageFile(file) {
+        if (!file || !file.type.startsWith('image/')) return
+        if (file.size > 5 * 1024 * 1024) { showToast('Image must be under 5MB', 'error'); return }
+        const reader = new FileReader()
+        reader.onload = (ev) => {
+            imageData = { preview: ev.target.result, base64: ev.target.result.split(',')[1], name: file.name }
+            document.getElementById('preview-img').src = ev.target.result
+            document.getElementById('preview-name').textContent = file.name
+            document.getElementById('image-preview').classList.add('visible')
+        }
+        reader.readAsDataURL(file)
+    }
+
+    function removeImage() {
+        imageData = null
+        document.getElementById('image-preview').classList.remove('visible')
+        document.getElementById('img-input').value = ''
+    }
+
+    async function sendMessage() {
+        const text = inputEl.value.trim()
+        if (!text && !imageData) return
+
+        const userMsg = { role: 'user', content: text, image: imageData?.preview }
+        messages.push({ role: 'user', content: text })
+
+        appendMessage('user', text, userMsg.image)
+        inputEl.value = ''
+        inputEl.style.height = '46px'
+        removeImage()
+        setLoading(true)
+
+        const streamId = 'ai_' + Date.now()
+        appendMessage('assistant', '', null, streamId)
+
+        try {
+            abortCtrl = new AbortController()
+            const res = await fetch('/api/chat/stream/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                credentials: 'include',
+                signal: abortCtrl.signal,
+                body: JSON.stringify({
+                    messages, intensity, persona,
+                    bio: document.getElementById('bio-input').value,
+                    imageBase64: imageData?.base64 || null,
+                    conversationId,
+                }),
+            })
+
+            const reader = res.body.getReader()
+            const dec = new TextDecoder()
+            let full = ''
+            let done = false
+
+            while (!done) {
+                const { done: streamDone, value } = await reader.read()
+                if (streamDone) break
+                const chunk = dec.decode(value, { stream: true })
+                for (const line of chunk.split('\n')) {
+                    if (!line.startsWith('data: ')) continue
+                    const d = line.slice(6).trim()
+                    if (d === '[DONE]') { done = true; break }
+                    try {
+                        const parsed = JSON.parse(d)
+                        if (parsed.conversationId) { conversationId = parsed.conversationId; continue }
+                        // Surface server-side errors into the bubble
+                        if (parsed.error) {
+                            const bubble = document.querySelector(`[data-id="${streamId}"] .bubble-text`)
+                            if (bubble) { bubble.textContent = 'Something went wrong — try again.'; bubble.style.color = 'var(--red)' }
+                            done = true; break
+                        }
+                        const delta = parsed.choices?.[0]?.delta?.content || ''
+                        if (!delta) continue
+                        full += delta
+                        const bubble = document.querySelector(`[data-id="${streamId}"] .bubble-text`)
+                        if (bubble) bubble.textContent = full
+                        messagesEl.scrollTop = messagesEl.scrollHeight
+                    } catch { }
+                }
+            }
+
+            // Guard against blank bubble — shouldn't happen but just in case
+            if (!full) {
+                const bubble = document.querySelector(`[data-id="${streamId}"] .bubble-text`)
+                if (bubble && !bubble.style.color) {
+                    bubble.textContent = '...crickets. Try sending something.'
+                    bubble.style.color = 'var(--text-muted)'
+                }
+            }
+
+            messages.push({ role: 'assistant', content: full })
+            finalizeMessage(streamId, full)
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                const bubble = document.querySelector(`[data-id="${streamId}"] .bubble-text`)
+                if (bubble) { bubble.textContent = 'Something went wrong. Try again.'; bubble.style.color = 'var(--red)' }
+            }
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    function appendMessage(role, content, image = null, streamId = null) {
+        const row = document.createElement('div')
+        row.className = `msg-row ${role}`
+        if (streamId) row.dataset.id = streamId
+
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+        if (role === 'user') {
+            row.innerHTML = `<div class="msg-user-wrap">
+      ${image ? `<img src="${image}" alt="Upload" style="width:100%;max-width:260px;border-radius:12px 12px 4px 12px;margin-bottom:.5rem;display:block;margin-left:auto;border:1px solid rgba(0,212,170,.2)"/>` : ''}
+      ${content ? `<div class="msg-user"><p>${escHtml(content)}</p></div>` : ''}
+      <div class="msg-timestamp">${now}</div>
+    </div>`
+        } else {
+            row.innerHTML = `<div class="msg-avatar"><i class="fa-solid fa-robot"></i></div>
+    <div class="msg-ai-wrap">
+      <div class="msg-ai">
+        ${streamId ? '<div class="typing-dots"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>' : ''}
+        <p class="bubble-text">${content}</p>
+      </div>
+      <div class="msg-actions" id="actions-${streamId || 'static'}">
+        <span style="font-size:.68rem;color:var(--text-muted)">${now}</span>
+      </div>
+    </div>`
+        }
+
+        if (content && streamId) {
+            const dots = row.querySelector('.typing-dots')
+            if (dots) dots.remove()
+        }
+
+        messagesEl.appendChild(row)
+        messagesEl.scrollTop = messagesEl.scrollHeight
+        return row
+    }
+
+    function finalizeMessage(streamId, content) {
+        const row = document.querySelector(`[data-id="${streamId}"]`)
+        if (!row) return
+        // Always remove typing dots
+        row.querySelectorAll('.typing-dots').forEach(el => el.remove())
+
+        if (!content) return  // error was already displayed in bubble
+
+        const actionsEl = document.getElementById(`actions-${streamId}`)
+        if (actionsEl) {
+            actionsEl.innerHTML = `
+      <span style="font-size:.68rem;color:var(--text-muted)">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+      <button class="action-btn" onclick="copyText(this,'${streamId}')" title="Copy"><i class="fa-regular fa-copy"></i> Copy</button>
+      <button class="action-btn" onclick="shareRoast('${escAttr(content)}')" title="Share"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share</button>`
+        }
+    }
+
+    async function copyText(btn, id) {
+        const bubble = document.querySelector(`[data-id="${id}"] .bubble-text`)
+        if (!bubble) return
+        await navigator.clipboard.writeText(bubble.textContent)
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied'
+        btn.classList.add('active')
+        setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy'; btn.classList.remove('active') }, 1500)
+    }
+
+    async function shareRoast(text) {
+        if (navigator.share) await navigator.share({ title: 'Roaster AI got me', text }).catch(() => { })
+        else { await navigator.clipboard.writeText(text); showToast('Copied to clipboard!', 'success') }
+    }
+
+    function stopStream() { abortCtrl?.abort() }
+
+    function setLoading(on) {
+        document.getElementById('send-btn').style.display = on ? 'none' : 'flex'
+        document.getElementById('stop-btn').style.display = on ? 'flex' : 'none'
+    }
+
+    function clearChat() {
+        messages = []; conversationId = null
+        messagesEl.innerHTML = ''
+        addWelcomeMessage()
+    }
+
+    async function handleLogout() {
+        await Auth.logout()
+    }
+
+    function escHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') }
+    function escAttr(s) { return s.replace(/'/g, '&#39;').replace(/\n/g, ' ') }
+</script>
+{% endblock %}

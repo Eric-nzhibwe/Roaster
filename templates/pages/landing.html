@@ -1,0 +1,532 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Roaster AI — The AI That Burns So You Don't Have To{% endblock %}
+
+{% block body %}
+<div class="grid-bg"></div>
+
+<!-- Nav -->
+<nav id="main-nav">
+    <a href="/" class="nav-logo">
+        <span style="font-size:1.25rem"><i class="fa-solid fa-comment-slash" style="color:var(--teal)"></i></span>
+        <span>Roaster AI</span>
+    </a>
+    <div class="desktop-only" style="display:flex;gap:.25rem;align-items:center">
+        <a href="/leaderboard/" class="nav-link"><i class="fa-solid fa-ranking-star"></i> Leaderboard</a>
+        <a href="/login/" class="nav-link">Log in</a>
+    </div>
+    <button class="theme-btn" aria-label="Toggle theme"><i class="fa-solid fa-sun"></i></button>
+    <div style="display:flex;gap:.5rem" class="desktop-only">
+        <a href="/signup/" class="btn btn-primary" style="padding:.4rem 1.25rem;font-size:.85rem">
+            <i class="fa-solid fa-bolt"></i> Get Roasted Free
+        </a>
+    </div>
+    <button onclick="toggleMobileMenu()" class="mobile-menu-btn theme-btn" style="display:none" aria-label="Menu">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+</nav>
+
+<!-- Mobile menu -->
+<div id="mobile-menu"
+    style="display:none;position:fixed;top:64px;left:0;right:0;z-index:99;background:var(--bg-card);border-bottom:1px solid var(--border-subtle);padding:1rem 1.5rem;flex-direction:column;gap:.5rem">
+    <a href="/leaderboard/" class="nav-link" style="display:block;padding:.625rem .75rem">Leaderboard</a>
+    <a href="/login/" class="btn btn-ghost" style="width:100%;margin-top:.5rem">Log in</a>
+    <a href="/signup/" class="btn btn-primary" style="width:100%">Get Roasted Free</a>
+</div>
+
+<!-- Hero -->
+<section style="position:relative;z-index:1;padding:7.5rem 1.5rem 4rem;text-align:center;overflow:hidden">
+    <!-- Glow blob -->
+    <div
+        style="position:absolute;top:5%;left:50%;transform:translateX(-50%);width:700px;height:500px;background:radial-gradient(ellipse,rgba(0,212,170,.06) 0%,transparent 65%);pointer-events:none">
+    </div>
+
+    <h1 class="fade-in-up"
+        style="font-size:clamp(2.8rem,7.5vw,5.5rem);font-weight:900;line-height:1.03;margin-bottom:1.5rem;letter-spacing:-.03em">
+        The AI That <span class="gradient-text">Roasts You</span><br>Better Than Your Friends
+    </h1>
+
+    <p class="fade-in-up"
+        style="font-size:clamp(1rem,2vw,1.2rem);color:var(--text-secondary);max-width:560px;margin:0 auto 1rem;line-height:1.75">
+        Your friends are too polite. Your family doesn't want the drama. We have absolutely no such problem.
+    </p>
+    <p class="fade-in-up"
+        style="font-size:.9rem;color:var(--text-muted);max-width:480px;margin:0 auto 2.75rem;line-height:1.6">
+        Upload a photo, share your vibe, or just say hello — and watch an AI with zero filter and maximum wit reduce
+        your ego to a fine powder.
+    </p>
+
+    <div class="fade-in-up" style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:.75rem">
+        <a href="/signup/" class="btn btn-primary"
+            style="font-size:1rem;padding:.9rem 2.25rem;border-radius:12px;gap:.6rem">
+            <i class="fa-solid fa-bolt"></i> Get Roasted — It's Free
+        </a>
+        <a href="/leaderboard/" class="btn btn-ghost"
+            style="font-size:1rem;padding:.9rem 2.25rem;border-radius:12px;gap:.6rem">
+            <i class="fa-solid fa-trophy"></i> Hall of Flame
+        </a>
+    </div>
+    <p class="fade-in-up" style="font-size:.75rem;color:var(--text-muted)">
+        <i class="fa-solid fa-lock" style="font-size:.65rem"></i> No credit card &nbsp;·&nbsp;
+        <i class="fa-solid fa-user-slash" style="font-size:.65rem"></i> No dignity &nbsp;·&nbsp;
+        <i class="fa-solid fa-heart-crack" style="font-size:.65rem"></i> No mercy
+    </p>
+    </div>
+
+    <!-- Typewriter card -->
+    <div class="fade-in-up" style="max-width:700px;margin:3.5rem auto 0;position:relative;z-index:1">
+        <div class="glass"
+            style="border-radius:18px;padding:1.75rem 2rem;text-align:left;position:relative;overflow:hidden">
+            <div
+                style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--teal),transparent)">
+            </div>
+            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem">
+                <div
+                    style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));display:flex;align-items:center;justify-content:center;font-size:1rem;box-shadow:0 4px 12px rgba(0,212,170,.25)">
+                    <i class="fa-solid fa-comment-slash" style="color:#000"></i>
+                </div>
+                <div>
+                    <div style="font-size:.78rem;font-weight:700;color:var(--teal);letter-spacing:.05em">ROASTER AI ·
+                        REX</div>
+                    <div style="font-size:.68rem;color:var(--text-muted);display:flex;align-items:center;gap:.3rem">
+                        <span
+                            style="width:5px;height:5px;border-radius:50%;background:var(--teal);display:inline-block;animation:pulse-dot 2s infinite"></span>
+                        Nuclear Mode · No filter active
+                    </div>
+                </div>
+                <div style="margin-left:auto;display:flex;gap:5px">
+                    <div style="width:8px;height:8px;border-radius:50%;background:#FF4757"></div>
+                    <div style="width:8px;height:8px;border-radius:50%;background:#FFD93D"></div>
+                    <div style="width:8px;height:8px;border-radius:50%;background:#4ADE80"></div>
+                </div>
+            </div>
+            <p id="typewriter-text"
+                style="font-size:clamp(.9rem,1.5vw,1.05rem);line-height:1.75;color:var(--text-primary);min-height:3.5rem;font-style:italic">
+                "<span id="typed"></span><span id="cursor"
+                    style="display:inline-block;width:2px;height:1.1em;background:var(--teal);margin-left:1px;vertical-align:text-bottom;animation:typing .8s infinite"></span>"
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Stats -->
+<section style="position:relative;z-index:1;padding:1.5rem 1.5rem 3rem">
+    <div
+        style="max-width:860px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:1rem">
+        {% for stat in stats %}
+        <div class="card" style="padding:1.5rem;text-align:center;border-color:rgba(0,212,170,.08)">
+            <div class="gradient-text" style="font-size:2.2rem;font-weight:900;letter-spacing:-.02em">{{ stat.value }}
+            </div>
+            <div
+                style="font-size:.72rem;color:var(--text-muted);margin-top:.3rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase">
+                {{ stat.label }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- How it works -->
+<section style="position:relative;z-index:1;padding:4rem 1.5rem">
+    <div style="max-width:900px;margin:0 auto">
+        <div style="text-align:center;margin-bottom:3rem">
+            <div
+                style="display:inline-flex;align-items:center;gap:.5rem;background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.12);border-radius:100px;padding:.3rem .9rem;margin-bottom:1rem;font-size:.72rem;color:var(--teal);font-weight:700;letter-spacing:.06em">
+                <i class="fa-solid fa-circle-info"></i> HOW IT WORKS
+            </div>
+            <h2 style="font-size:clamp(1.8rem,4vw,2.4rem);font-weight:800;margin-bottom:.75rem">Three steps to total
+                humiliation</h2>
+            <p style="color:var(--text-secondary);max-width:420px;margin:0 auto">The process is simple. The recovery is
+                less so.</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem">
+            <div class="card" style="padding:2rem;position:relative;overflow:hidden">
+                <div
+                    style="position:absolute;top:1rem;right:1.25rem;font-size:.7rem;font-weight:800;color:rgba(0,212,170,.2);letter-spacing:.05em">
+                    01</div>
+                <div
+                    style="width:44px;height:44px;border-radius:12px;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.2);display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem">
+                    <i class="fa-solid fa-user-pen" style="color:var(--teal);font-size:1.1rem"></i>
+                </div>
+                <h3 style="font-weight:700;font-size:1rem;margin-bottom:.5rem">Show up</h3>
+                <p style="font-size:.875rem;color:var(--text-secondary);line-height:1.65">Create an account, pick your
+                    persona and intensity level. Choose how much pain you can handle — then immediately pick more than
+                    that.</p>
+            </div>
+            <div class="card" style="padding:2rem;position:relative;overflow:hidden">
+                <div
+                    style="position:absolute;top:1rem;right:1.25rem;font-size:.7rem;font-weight:800;color:rgba(0,212,170,.2);letter-spacing:.05em">
+                    02</div>
+                <div
+                    style="width:44px;height:44px;border-radius:12px;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.2);display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem">
+                    <i class="fa-solid fa-comment-dots" style="color:var(--teal);font-size:1.1rem"></i>
+                </div>
+                <h3 style="font-weight:700;font-size:1rem;margin-bottom:.5rem">Say something</h3>
+                <p style="font-size:.875rem;color:var(--text-secondary);line-height:1.65">Type a message, upload a
+                    photo, or just say hi. Every single input — yes, even "hello" — gets roasted. There is no safe
+                    opening.</p>
+            </div>
+            <div class="card" style="padding:2rem;position:relative;overflow:hidden">
+                <div
+                    style="position:absolute;top:1rem;right:1.25rem;font-size:.7rem;font-weight:800;color:rgba(0,212,170,.2);letter-spacing:.05em">
+                    03</div>
+                <div
+                    style="width:44px;height:44px;border-radius:12px;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.2);display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem">
+                    <i class="fa-solid fa-face-laugh-squint" style="color:var(--teal);font-size:1.1rem"></i>
+                </div>
+                <h3 style="font-weight:700;font-size:1rem;margin-bottom:.5rem">Get destroyed</h3>
+                <p style="font-size:.875rem;color:var(--text-secondary);line-height:1.65">Receive a precision-crafted
+                    burn that's somehow uncomfortably specific about your life choices. Laugh. Cry. Share it. Come back
+                    for more.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Personas -->
+<section style="position:relative;z-index:1;padding:4rem 1.5rem">
+    <div style="max-width:900px;margin:0 auto">
+        <div style="text-align:center;margin-bottom:3rem">
+            <div
+                style="display:inline-flex;align-items:center;gap:.5rem;background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.12);border-radius:100px;padding:.3rem .9rem;margin-bottom:1rem;font-size:.72rem;color:var(--teal);font-weight:700;letter-spacing:.06em">
+                <i class="fa-solid fa-masks-theater"></i> PICK YOUR EXECUTIONER
+            </div>
+            <h2 style="font-size:clamp(1.8rem,4vw,2.4rem);font-weight:800;margin-bottom:.75rem">Choose Your Destroyer
+            </h2>
+            <p style="color:var(--text-secondary);max-width:400px;margin:0 auto">6 personas. 0 mercy. Each one hits
+                differently — and harder than the last.</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem">
+            {% for p in personas %}
+            <a href="/signup/" class="card"
+                style="padding:1.5rem 1rem;text-align:center;cursor:pointer;transition:all .22s;text-decoration:none;display:block;position:relative;overflow:hidden"
+                onmouseover="this.style.borderColor='rgba(0,212,170,.35)';this.style.transform='translateY(-5px)';this.style.background='rgba(0,212,170,.04)'"
+                onmouseout="this.style.borderColor='var(--border-subtle)';this.style.transform='translateY(0)';this.style.background=''">
+                <div style="font-size:1.6rem;margin-bottom:.75rem;line-height:1">{{ p.icon|safe }}</div>
+                <div style="font-size:.82rem;font-weight:600;color:var(--text-primary);margin-bottom:.25rem">{{ p.name
+                    }}</div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section style="position:relative;z-index:1;padding:4rem 1.5rem">
+    <div style="max-width:900px;margin:0 auto">
+        <div style="text-align:center;margin-bottom:3rem">
+            <div
+                style="display:inline-flex;align-items:center;gap:.5rem;background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.12);border-radius:100px;padding:.3rem .9rem;margin-bottom:1rem;font-size:.72rem;color:var(--teal);font-weight:700;letter-spacing:.06em">
+                <i class="fa-solid fa-wrench"></i> WHAT'S INSIDE
+            </div>
+            <h2 style="font-size:clamp(1.8rem,4vw,2.4rem);font-weight:800;margin-bottom:.75rem">Why Roaster AI?</h2>
+            <p style="color:var(--text-secondary)">Because your friends are too nice and therapy is too expensive.</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:1.5rem">
+            {% for f in features %}
+            <div class="card" style="padding:1.75rem;transition:all .2s"
+                onmouseover="this.style.borderColor='rgba(0,212,170,.2)';this.style.transform='translateY(-2px)'"
+                onmouseout="this.style.borderColor='var(--border-subtle)';this.style.transform='translateY(0)'">
+                <div
+                    style="width:42px;height:42px;border-radius:10px;background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.15);display:flex;align-items:center;justify-content:center;margin-bottom:1.1rem;font-size:1rem;color:var(--teal)">
+                    {{ f.icon|safe }}</div>
+                <h3 style="font-weight:700;margin-bottom:.4rem;font-size:.95rem">{{ f.title }}</h3>
+                <p style="font-size:.85rem;color:var(--text-secondary);line-height:1.65">{{ f.desc }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section style="position:relative;z-index:1;padding:5rem 1.5rem;text-align:center">
+    <div style="max-width:600px;margin:0 auto">
+        <div class="glass"
+            style="border-radius:24px;padding:3.5rem 2.5rem;border:1px solid rgba(0,212,170,.15);position:relative;overflow:hidden">
+            <div
+                style="position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(0,212,170,.06),transparent 65%);pointer-events:none">
+            </div>
+            <div
+                style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;box-shadow:0 8px 24px rgba(0,212,170,.25)">
+                <i class="fa-solid fa-comment-slash" style="color:#000;font-size:1.3rem"></i>
+            </div>
+            <h2 style="font-size:clamp(1.6rem,4vw,2.2rem);font-weight:900;margin-bottom:.75rem">Ready to Get <span
+                    class="gradient-text">Absolutely Cooked?</span></h2>
+            <p style="color:var(--text-secondary);margin-bottom:.75rem;line-height:1.65;font-size:.95rem">Join 50,000+
+                users who found out exactly what the AI thinks of them.</p>
+            <p style="color:var(--text-muted);font-size:.82rem;margin-bottom:2rem">Spoiler: it's not impressed. But it
+                IS entertained.</p>
+            <a href="/signup/" class="btn btn-primary"
+                style="font-size:1.05rem;padding:.95rem 2.75rem;border-radius:12px;gap:.65rem">
+                <i class="fa-solid fa-bolt"></i> Start for Free
+            </a>
+            <p style="margin-top:1.25rem;font-size:.75rem;color:var(--text-muted)">
+                <i class="fa-solid fa-lock" style="font-size:.65rem"></i> No credit card &nbsp;·&nbsp; No mercy
+                &nbsp;·&nbsp; No going back
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer style="position:relative;z-index:1;border-top:1px solid var(--border-subtle);padding:2.5rem 1.5rem">
+    <div
+        style="max-width:900px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1.25rem">
+        <div style="display:flex;align-items:center;gap:.5rem">
+            <i class="fa-solid fa-comment-slash" style="font-size:1.1rem;color:var(--teal)"></i>
+            <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--teal)">Roaster AI</span>
+        </div>
+        <div style="font-size:.78rem;color:var(--text-muted);text-align:center">
+            Built for people who can take a joke. You probably can. Probably.
+        </div>
+        <div style="display:flex;gap:1.5rem;align-items:center">
+            <button onclick="openModal('terms')"
+                style="background:none;border:none;cursor:pointer;font-size:.8rem;color:var(--text-muted);font-family:'Inter',sans-serif;padding:0"
+                onmouseover="this.style.color='var(--teal)'"
+                onmouseout="this.style.color='var(--text-muted)'">Terms</button>
+            <button onclick="openModal('privacy')"
+                style="background:none;border:none;cursor:pointer;font-size:.8rem;color:var(--text-muted);font-family:'Inter',sans-serif;padding:0"
+                onmouseover="this.style.color='var(--teal)'"
+                onmouseout="this.style.color='var(--text-muted)'">Privacy</button>
+            <span style="font-size:.75rem;color:var(--text-muted)">© 2026 Roaster AI. All burns reserved.</span>
+        </div>
+    </div>
+</footer>
+
+<!-- ── Modal backdrop ── -->
+<div id="modal-backdrop" onclick="closeModal()"
+    style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:1.5rem">
+</div>
+
+<!-- ── Terms of Service modal ── -->
+<div id="modal-terms"
+    style="display:none;position:fixed;inset:0;z-index:201;align-items:center;justify-content:center;padding:1.5rem;pointer-events:none">
+    <div
+        style="width:100%;max-width:600px;max-height:85vh;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;pointer-events:all;box-shadow:0 24px 64px rgba(0,0,0,.5);animation:fadeInUp .25s ease">
+        <!-- Header -->
+        <div
+            style="padding:1.5rem 1.75rem;border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+            <div style="display:flex;align-items:center;gap:.75rem">
+                <div
+                    style="width:36px;height:36px;border-radius:9px;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.2);display:flex;align-items:center;justify-content:center">
+                    <i class="fa-solid fa-file-lines" style="color:var(--teal);font-size:.9rem"></i>
+                </div>
+                <div>
+                    <div style="font-weight:800;font-size:1rem">Terms of Service</div>
+                    <div style="font-size:.7rem;color:var(--text-muted)">Last updated: October 2026</div>
+                </div>
+            </div>
+            <button onclick="closeModal()"
+                style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--text-muted);font-size:.9rem;display:flex;align-items:center;justify-content:center"
+                onmouseover="this.style.borderColor='var(--teal)'"
+                onmouseout="this.style.borderColor='var(--border-subtle)'">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <!-- Body -->
+        <div
+            style="overflow-y:auto;padding:1.75rem;flex:1;line-height:1.75;font-size:.9rem;color:var(--text-secondary)">
+            <p style="margin-bottom:1.25rem;color:var(--text-primary);font-weight:500">Welcome to Roaster AI. By using
+                this service, you agree to get roasted — and to be cool about it.</p>
+
+            <h3
+                style="font-size:.85rem;font-weight:700;color:var(--text-primary);margin:1.5rem 0 .5rem;text-transform:uppercase;letter-spacing:.05em">
+                1. The Service</h3>
+            <p style="margin-bottom:1rem">Roaster AI provides AI-generated comedic roasts for entertainment purposes.
+                Nothing the AI says should be taken as genuine medical, legal, financial, or life advice — though
+                frankly, it might be more accurate than some of those anyway.</p>
+
+            <h3
+                style="font-size:.85rem;font-weight:700;color:var(--text-primary);margin:1.5rem 0 .5rem;text-transform:uppercase;letter-spacing:.05em">
+                2. You Must Be 18+</h3>
+            <p style="margin-bottom:1rem">You must be at least 18 years old to use Roaster AI. If you're not, close this
+                tab and come back when you've had more life experience to be roasted about.</p>
+
+            <h3
+                style="font-size:.85rem;font-weight:700;color:var(--text-primary);margin:1.5rem 0 .5rem;text-transform:uppercase;letter-spacing:.05em">
+                3. Acceptable Use</h3>
+            <p style="margin-bottom:.75rem">You agree not to use Roaster AI to:</p>
+            <ul style="margin:0 0 1rem 1.25rem;display:flex;flex-direction:column;gap:.4rem">
+                <li>Harass, target, or roast other real people without their knowledge and consent</li>
+                <li>Generate content that is hateful, discriminatory, or targeted at protected characteristics</li>
+                <li>Attempt to extract harmful or dangerous information through the roast format</li>
+                <li>Scrape, reproduce, or resell AI outputs at scale without permission</li>
+                <li>Pretend the AI's roasts are human-generated for deceptive purposes</li>
+            </ul>
+
+            <h3
+                style="font-size:.85rem;font-weight:700;color:var(--text-primary);margin:1.5rem 0 .5rem;text-transform:uppercase;letter-spacing:.05em">
+                4. Content & Outputs</h3>
+            <p style="margin-bottom:1rem">AI-generated roasts are for personal entertainment only. Roaster AI makes no
+                guarantees about accuracy, fairness, or the emotional resilience required to handle the output. You came
+                here voluntarily. Act accordingly.</p>
+
+            <h3
+                style="font-size:.85rem;font-weight:700;color:var(--text-primary);margin:1.5rem 0 .5rem;text-transform:uppercase;letter-spacing:.05em">
+                5. Account Responsibility</h3>
+            <p style="margin-bottom:1rem">You're responsible for your account credentials and all activity under your
+                account. We are not responsible for any existential crises triggered by particularly accurate roasts.
+            </p>
+
+            <h3
+                style="font-size:.85rem;font-weight:700;color:var(--text-primary);margin:1.5rem 0 .5rem;text-transform:uppercase;letter-spacing:.05em">
+                6. Limitation of Liability</h3>
+            <p style="margin-bottom:1rem">Roaster AI is provided "as is." We are not liable for any damages including
+                but not limited to hurt feelings, damaged egos, or the compulsive need to screenshot and share roasts
+                with people who didn't ask.</p>
+
+            <h3
+                style="font-size:.85rem;font-weight:700;color:var(--text-primary);margin:1.5rem 0 .5rem;text-transform:uppercase;letter-spacing:.05em">
+                7. Changes to Terms</h3>
+            <p>We may update these terms occasionally. Continued use of the service means you accept the updated terms.
+                We'll try to keep them as readable as this version.</p>
+        </div>
+        <!-- Footer -->
+        <div
+            style="padding:1.25rem 1.75rem;border-top:1px solid var(--border-subtle);flex-shrink:0;display:flex;justify-content:flex-end">
+            <button onclick="closeModal()" class="btn btn-primary" style="padding:.6rem 1.5rem;font-size:.875rem">Got
+                it</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Privacy Policy modal ── -->
+<div id="modal-privacy"
+    style="display:none;position:fixed;inset:0;z-index:201;align-items:center;justify-content:center;padding:1.5rem;pointer-events:none">
+    <div
+        style="width:100%;max-width:600px;max-height:85vh;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;pointer-events:all;box-shadow:0 24px 64px rgba(0,0,0,.5);animation:fadeInUp .25s ease">
+        <!-- Header -->
+        <div
+            style="padding:1.5rem 1.75rem;border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+            <div style="display:flex;align-items:center;gap:.75rem">
+                <div
+                    style="width:36px;height:36px;border-radius:9px;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.2);display:flex;align-items:center;justify-content:center">
+                    <i class="fa-solid fa-shield-halved" style="color:var(--teal);font-size:.9rem"></i>
+                </div>
+                <div>
+                    <div style="font-weight:800;font-size:1rem">Privacy Policy</div>
+                    <div style="font-size:.7rem;color:var(--text-muted)">Last updated: October 2026</div>
+                </div>
+            </div>
+            <button onclick="closeModal()"
+                style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--text-muted);font-size:.9rem;display:flex;align-items:center;justify-content:center"
+                onmouseover="this.style.borderColor='var(--teal)'"
+                onmouseout="this.style.borderColor='var(--border-subtle)'">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <!-- Body -->
+        <div
+            style="overflow-y:auto;padding:1.75rem;flex:1;line-height:1.75;font-size:.9rem;color:var(--text-secondary)">
+            <p style="margin-bottom:1.25rem;color:var(--text-primary);font-weight:500">We take your privacy seriously.
+                Here's exactly what we collect, why, and what we do with it.</p>
+
+            <h3
+                style="font-size:.85rem;font-weight:700;color:var(--text-primary);margin:1.5rem 0 .5rem;text-transform:uppercase;letter-spacing:.05em">
+                What We Collect</h3>
+            <ul style="margin:0 0 1rem 1.25rem;display:flex;flex-direction:column;gap:.5rem">
+                <li><strong style="color:var(--text-primary)">Account info</strong> — your name, email address, and
+                    authentication provider (email or Google)</li>
+                <li><strong style="color:var(--text-primary)">Chat content</strong> — messages and photos you submit to
+                    generate roasts</li>
+                <li><strong style="color:var(--text-primary)">Usage data</strong> — which personas and intensity levels
+                    you use, session length</li>
+                <li><strong style="color:var(--text-primary)">Device info</strong> — browser type, OS, and general
+                    location (country level only)</li>
+            </ul>
+
+            <h3
+                style="font-size:.85rem;font-weight:700;color:var(--text-primary);margin:1.5rem 0 .5rem;text-transform:uppercase;letter-spacing:.05em">
+                How We Use It</h3>
+            <ul style="margin:0 0 1rem 1.25rem;display:flex;flex-direction:column;gap:.5rem">
+                <li>To provide and improve the roasting service</li>
+                <li>To save your roast history so you can revisit your lowest moments</li>
+                <li>To personalise burns when you provide a bio</li>
+                <li>To maintain the leaderboard and public features you opt into</li>
+                <li>We do <strong style="color:var(--text-primary)">not</strong> sell your data to third parties. Ever.
+                </li>
+            </ul>
+
+            <h3
+                style="font-size:.85rem;font-weight:700;color:var(--text-primary);margin:1.5rem 0 .5rem;text-transform:uppercase;letter-spacing:.05em">
+                Photos & Images</h3>
+            <p style="margin-bottom:1rem">Photos you upload for vision roasting are sent to our AI provider for
+                processing and are not permanently stored after the session. We do not use your images to train AI
+                models.</p>
+
+            <h3
+                style="font-size:.85rem;font-weight:700;color:var(--text-primary);margin:1.5rem 0 .5rem;text-transform:uppercase;letter-spacing:.05em">
+                Third-Party Services</h3>
+            <p style="margin-bottom:1rem">We use Firebase for authentication and Groq for AI inference. These services
+                have their own privacy policies. We use them minimally and responsibly.</p>
+
+            <h3
+                style="font-size:.85rem;font-weight:700;color:var(--text-primary);margin:1.5rem 0 .5rem;text-transform:uppercase;letter-spacing:.05em">
+                Your Rights</h3>
+            <ul style="margin:0 0 1rem 1.25rem;display:flex;flex-direction:column;gap:.5rem">
+                <li>Access or export your data at any time from your profile</li>
+                <li>Delete your account and all associated data permanently</li>
+                <li>Opt out of your roasts appearing on the public leaderboard</li>
+            </ul>
+
+            <h3
+                style="font-size:.85rem;font-weight:700;color:var(--text-primary);margin:1.5rem 0 .5rem;text-transform:uppercase;letter-spacing:.05em">
+                Data Retention</h3>
+            <p>We keep your data as long as your account is active. Deleting your account removes all associated data
+                within 30 days. Some anonymised usage statistics may be retained for service improvement.</p>
+        </div>
+        <!-- Footer -->
+        <div
+            style="padding:1.25rem 1.75rem;border-top:1px solid var(--border-subtle);flex-shrink:0;display:flex;justify-content:flex-end">
+            <button onclick="closeModal()" class="btn btn-primary" style="padding:.6rem 1.5rem;font-size:.875rem">Got
+                it</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const roasts = [
+        "your linkedin says 'visionary leader' but your bank account says 'visionary is free, leadership costs extra'.",
+        "you have the energy of someone who's read three self-help books and is about to ruin a dinner party.",
+        "your vibe is 'motivation speaker at a conference no one registered for on purpose'.",
+        "somewhere out there, a participation trophy is feeling seen by your career trajectory.",
+        "you type with two fingers and the confidence of someone who types with ten. that's your whole personality.",
+        "you're not a red flag. you're more like a beige flag — nothing's technically wrong, it's just all slightly off.",
+        "your personality arrived 15 minutes late, asked what it missed, and then gave its own summary of the meeting.",
+        "the algorithm knows more about your life goals than you do. and it's still not recommending you.",
+    ]
+    let ri = 0, ci = 0
+    const typed = document.getElementById('typed')
+
+    function typeNext() {
+        const roast = roasts[ri]
+        if (ci < roast.length) {
+            typed.textContent = roast.slice(0, ++ci)
+            setTimeout(typeNext, 26)
+        } else {
+            setTimeout(() => { ci = 0; ri = (ri + 1) % roasts.length; typeNext() }, 3000)
+        }
+    }
+    typeNext()
+
+    function toggleMobileMenu() {
+        const m = document.getElementById('mobile-menu')
+        m.style.display = m.style.display === 'none' ? 'flex' : 'none'
+    }
+
+    function openModal(type) {
+        document.getElementById('modal-backdrop').style.display = 'flex'
+        const el = document.getElementById(`modal-${type}`)
+        el.style.display = 'flex'
+        document.body.style.overflow = 'hidden'
+    }
+
+    function closeModal() {
+        document.getElementById('modal-backdrop').style.display = 'none'
+        document.querySelectorAll('[id^="modal-terms"], [id^="modal-privacy"]').forEach(el => el.style.display = 'none')
+        document.body.style.overflow = ''
+    }
+
+    // Close on Escape key
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal() })
+</script>
+{% endblock %}

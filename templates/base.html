@@ -1,0 +1,43 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Welcome to Roaster AI{% endblock %}</title>
+  <meta name="description" content="{% block description %}Get roasted by the coldest AI on the internet.{% endblock %}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="{% static 'css/main.css' %}" />
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  {% block body %}{% endblock %}
+
+  <!-- Firebase Web SDK (modular, loaded as ES module) -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js'
+    import * as fbAuth from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js'
+
+    const firebaseConfig = {
+      apiKey:            "{{ FIREBASE_CONFIG.apiKey }}",
+      authDomain:        "{{ FIREBASE_CONFIG.authDomain }}",
+      projectId:         "{{ FIREBASE_CONFIG.projectId }}",
+      messagingSenderId: "{{ FIREBASE_CONFIG.messagingSenderId }}",
+      appId:             "{{ FIREBASE_CONFIG.appId }}",
+    }
+
+    const app = initializeApp(firebaseConfig)
+    window._firebaseAuth = fbAuth.getAuth(app)
+    window.firebaseAuth  = fbAuth
+
+    // Signal that Firebase is ready
+    window._firebaseReady = true
+    window.dispatchEvent(new Event('firebase-ready'))
+  </script>
+
+  <script src="{% static 'js/auth.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
