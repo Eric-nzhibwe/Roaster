@@ -10,6 +10,16 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-change-in-pro
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# Security hardening (active when DEBUG=False)
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -134,11 +144,20 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
 ]
+_render_url = os.environ.get('RENDER_EXTERNAL_URL', '')
+if _render_url:
+    CORS_ALLOWED_ORIGINS.append(_render_url)
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF
 CSRF_COOKIE_HTTPONLY = False  # Allow JS to read CSRF token
 CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+if _render_url:
+    CSRF_TRUSTED_ORIGINS.append(_render_url)
 
 # Groq
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
