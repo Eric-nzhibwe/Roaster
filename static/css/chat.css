@@ -26,7 +26,8 @@ body { overflow: hidden; }
   border-right: 1px solid rgba(255,255,255,.05);
   z-index: 40;
   transition: transform .3s cubic-bezier(.4,0,.2,1);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Subtle side accent */
@@ -39,7 +40,10 @@ body { overflow: hidden; }
   pointer-events: none;
 }
 
-.chat-sidebar::-webkit-scrollbar { width: 0; }
+.chat-sidebar::-webkit-scrollbar { width: 4px; }
+.chat-sidebar::-webkit-scrollbar-track { background: transparent; }
+.chat-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 4px; }
+.chat-sidebar::-webkit-scrollbar-thumb:hover { background: rgba(0,212,170,.3); }
 
 /* Sidebar header */
 .sidebar-header {
@@ -137,9 +141,7 @@ body { overflow: hidden; }
 /* Settings panel */
 .sidebar-settings {
   padding: .875rem 1rem 1.25rem;
-  margin-top: auto;
   flex-shrink: 0;
-  overflow-y: auto;
 }
 
 .sidebar-settings::-webkit-scrollbar { width: 0; }
@@ -701,6 +703,9 @@ body { overflow: hidden; }
 .light .persona-select { background: #f0f4f8; border-color: rgba(0,0,0,.08); }
 
 /* ── Responsive ── */
+.mobile-menu-btn { display: none; }
+#sidebar-close { display: none; }
+
 @media (max-width: 768px) {
   .chat-sidebar { transform: translateX(-100%); }
   .chat-sidebar.open { transform: translateX(0); box-shadow: 0 0 60px rgba(0,0,0,.7); }
