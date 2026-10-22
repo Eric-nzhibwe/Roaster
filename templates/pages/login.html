@@ -101,7 +101,7 @@
         document.querySelector('h1 + p').textContent = 'Sign in to start your first roasting session.'
     }
 
-    // Google sign-in on login page → straight to chat
+// Google sign-in on login page → straight to chat
     document.getElementById('google-btn').addEventListener('click', async (e) => {
         const btn = e.currentTarget
         const errEl = document.getElementById('error-msg')
@@ -114,7 +114,13 @@
         if (data?.success) { window.location.href = '/chat/'; return }
         btn.disabled = false
         btn.innerHTML = originalHTML
-        if (data?.error) { errEl.textContent = data.error; errEl.style.display = 'block' }
+        if (data?.error) {
+            errEl.textContent = data.error
+            errEl.style.display = 'block'
+        } else if (data && !data.success) {
+            errEl.textContent = data.detail || 'Sign-in failed. Please try again.'
+            errEl.style.display = 'block'
+        }
     })
 
     document.getElementById('login-form').addEventListener('submit', async (e) => {

@@ -100,7 +100,13 @@ document.getElementById('google-btn').addEventListener('click', async (e) => {
   }
   btn.disabled = false
   btn.innerHTML = originalHTML
-  if (data?.error) { errEl.textContent = data.error; errEl.style.display = 'block' }
+  if (data?.error) {
+    errEl.textContent = data.error
+    errEl.style.display = 'block'
+  } else if (data && !data.success) {
+    errEl.textContent = data.detail || 'Sign-in failed. Please try again.'
+    errEl.style.display = 'block'
+  }
 })
 
 // Email signup — show success toast then redirect to login
@@ -131,7 +137,8 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
   )
 
   if (data.success) {
-    showSignupSuccess()
+    showToast('Account created! Taking you to chat...', 'success')
+    // auth.js signupWithEmail handles the redirect to /chat/
   } else {
     errEl.textContent = data.error || 'Signup failed'
     errEl.style.display = 'block'

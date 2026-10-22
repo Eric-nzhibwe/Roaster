@@ -21,13 +21,27 @@ const Auth = {
    * @param {string} [name]  - Display name (signup only)
    */
   async _createSession(idToken, name = '') {
-    const res = await fetch('/api/auth/firebase-session/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-      credentials: 'include',
-      body: JSON.stringify({ idToken, name }),
-    })
-    return res.json()
+    try {
+      // Ensure Django has set the CSRF cookie before we POST
+      if (!getCsrfToken()) {
+        await fetch('/api/auth/csrf/', { credentials: 'include' })
+      }
+      const res = await fetch('/api/auth/firebase-session/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        credentials: 'include',
+        body: JSON.stringify({ idToken, name }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        let msg = 'Authentication failed.'
+        try { msg = JSON.parse(text).error || msg } catch { }
+        return { error: msg }
+      }
+      return res.json()
+    } catch {
+      return { error: 'Network error. Check your connection.' }
+    }
   },
 
   async signupWithEmail(name, email, password) {
@@ -38,9 +52,8 @@ const Auth = {
       await updateProfile(cred.user, { displayName: name })
       const idToken = await cred.user.getIdToken()
       const result = await this._createSession(idToken, name)
-      // Keep Firebase client session alive — Django cookies are now set
-      if (result.success && result.created) {
-        setTimeout(() => { window.location.href = '/profile/' }, 1500)
+      if (result.success) {
+        setTimeout(() => { window.location.href = '/chat/' }, 1500)
       }
       return result
     } catch (err) {
@@ -67,15 +80,16 @@ const Auth = {
       const provider = new GoogleAuthProvider()
       const cred = await signInWithPopup(window._firebaseAuth, provider)
       const idToken = await cred.user.getIdToken()
-      return this._createSession(idToken, cred.user.displayName || '')
+      const result = await this._createSession(idToken, cred.user.displayName || '')
+      return result
     } catch (err) {
-      if (err.code === 'auth/popup-closed-by-user') return { error: null } // user dismissed
+      if (err.code === 'auth/popup-closed-by-user') return { error: null }
       return { error: _firebaseError(err) }
     }
   },
 
   async logout() {
-    try { await window._firebaseAuth.signOut() } catch {}
+    try { await window._firebaseAuth.signOut() } catch { }
     await fetch('/api/auth/logout/', {
       method: 'POST',
       headers: { 'X-CSRFToken': getCsrfToken() },
@@ -103,15 +117,15 @@ const Auth = {
 // ── Firebase error → human-readable message ──
 function _firebaseError(err) {
   const map = {
-    'auth/email-already-in-use':    'An account with this email already exists.',
-    'auth/invalid-email':           'Invalid email address.',
-    'auth/weak-password':           'Password must be at least 6 characters.',
-    'auth/user-not-found':          'No account found with this email.',
-    'auth/wrong-password':          'Incorrect password.',
-    'auth/invalid-credential':      'Incorrect email or password.',
-    'auth/too-many-requests':       'Too many attempts. Try again later.',
-    'auth/network-request-failed':  'Network error. Check your connection.',
-    'auth/popup-blocked':           'Popup blocked. Allow popups for this site.',
+    'auth/email-already-in-use': 'An account with this email already exists.',
+    'auth/invalid-email': 'Invalid email address.',
+    'auth/weak-password': 'Password must be at least 6 characters.',
+    'auth/user-not-found': 'No account found with this email.',
+    'auth/wrong-password': 'Incorrect password.',
+    'auth/invalid-credential': 'Incorrect email or password.',
+    'auth/too-many-requests': 'Too many attempts. Try again later.',
+    'auth/network-request-failed': 'Network error. Check your connection.',
+    'auth/popup-blocked': 'Popup blocked. Allow popups for this site.',
   }
   return map[err.code] || err.message || 'Authentication failed.'
 }
