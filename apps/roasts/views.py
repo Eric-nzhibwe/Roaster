@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from apps.chat.models import Message
+from apps.users.firestore_service import log_vote_cast
 from .models import Vote
 
 
@@ -33,11 +34,13 @@ def toggle_upvote(request):
     if created:
         msg.upvotes += 1
         msg.save(update_fields=['upvotes'])
+        log_vote_cast(uid=request.user.username, message_id=msg.id, action='upvote')
         return Response({'upvoted': True, 'upvotes': msg.upvotes})
     else:
         vote.delete()
         msg.upvotes = max(0, msg.upvotes - 1)
         msg.save(update_fields=['upvotes'])
+        log_vote_cast(uid=request.user.username, message_id=msg.id, action='unvote')
         return Response({'upvoted': False, 'upvotes': msg.upvotes})
 
 

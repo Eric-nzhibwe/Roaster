@@ -7,7 +7,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from firebase_admin import auth as firebase_auth
 from .models import User
 from .serializers import UserSerializer, UpdateProfileSerializer
-from .firestore_service import sync_user, update_user_profile, delete_user_document
+from .firestore_service import (
+    sync_user, update_user_profile, delete_user_document,
+    log_signup, log_login, log_profile_updated, log_account_deleted,
+)
 
 
 def get_tokens(user):
@@ -96,6 +99,10 @@ def firebase_session(request):
 
     # Sync to Firestore (non-blocking — failures are logged, not raised)
     sync_user(user, uid, is_new=created)
+    if created:
+        log_signup(uid, email, provider_key)
+    else:
+        log_login(uid)
 
     return response
 
@@ -132,6 +139,7 @@ def update_profile(request):
         'default_persona':   request.user.default_persona,
         'topic_blacklist':   request.user.topic_blacklist,
     })
+    log_profile_updated(uid)
 
     return Response({'user': UserSerializer(request.user).data})
 
@@ -142,6 +150,7 @@ def delete_account(request):
     uid = request.user.username
     request.user.delete()
     delete_user_document(uid)
+    log_account_deleted(uid)
     response = Response({'success': True})
     response.delete_cookie('access_token')
     response.delete_cookie('refresh_token')

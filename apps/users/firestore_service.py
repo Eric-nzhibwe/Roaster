@@ -6,6 +6,9 @@ Firestore structure:
   users/{uid}/
     uid, email, display_name, provider, created_at, last_login,
     default_intensity, default_persona, bio, topic_blacklist
+
+  activity_events/{auto-id}/
+    event_type, uid, timestamp, ...event-specific fields
 """
 
 import logging
@@ -24,6 +27,72 @@ def _get_db():
     if _db is None:
         _db = firestore.client()
     return _db
+
+
+# ── Activity Events ──────────────────────────────────────────────────────────
+
+def _log_event(payload: dict) -> None:
+    """Write a document to activity_events. Failures are logged, never raised."""
+    try:
+        db = _get_db()
+        db.collection('activity_events').add(payload)
+    except Exception:
+        logger.exception('Firestore activity_event write failed: %s', payload.get('event_type'))
+
+
+def log_signup(uid: str, email: str, provider: str) -> None:
+    _log_event({
+        'event_type': 'signup',
+        'uid': uid,
+        'email': email,
+        'provider': provider,
+        'timestamp': datetime.now(timezone.utc),
+    })
+
+
+def log_login(uid: str) -> None:
+    _log_event({
+        'event_type': 'login',
+        'uid': uid,
+        'timestamp': datetime.now(timezone.utc),
+    })
+
+
+def log_roast_sent(uid: str, conversation_id: str, intensity: str, persona: str) -> None:
+    _log_event({
+        'event_type': 'roast_sent',
+        'uid': uid,
+        'conversation_id': str(conversation_id),
+        'intensity': intensity,
+        'persona': persona,
+        'timestamp': datetime.now(timezone.utc),
+    })
+
+
+def log_vote_cast(uid: str, message_id: int, action: str) -> None:
+    _log_event({
+        'event_type': 'vote_cast',
+        'uid': uid,
+        'message_id': message_id,
+        'action': action,  # 'upvote' | 'unvote'
+        'timestamp': datetime.now(timezone.utc),
+    })
+
+
+def log_profile_updated(uid: str) -> None:
+    _log_event({
+        'event_type': 'profile_updated',
+        'uid': uid,
+        'timestamp': datetime.now(timezone.utc),
+    })
+
+
+def log_account_deleted(uid: str) -> None:
+    _log_event({
+        'event_type': 'account_deleted',
+        'uid': uid,
+        'timestamp': datetime.now(timezone.utc),
+    })
 
 
 def sync_user(user, uid: str, is_new: bool) -> None:

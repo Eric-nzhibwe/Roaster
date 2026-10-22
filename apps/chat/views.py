@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from .models import Conversation, Message
 from .groq_service import stream_roast
 from apps.users.authentication import CookieJWTAuthentication
+from apps.users.firestore_service import log_roast_sent
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,12 @@ def chat_stream(request):
                     conversation=conversation,
                     role='assistant',
                     content=full_response,
+                )
+                log_roast_sent(
+                    uid=conversation.user.username,
+                    conversation_id=conversation.id,
+                    intensity=conversation.intensity,
+                    persona=conversation.persona,
                 )
 
         except Exception as e:

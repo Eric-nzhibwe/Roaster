@@ -38,8 +38,10 @@ const Auth = {
       await updateProfile(cred.user, { displayName: name })
       const idToken = await cred.user.getIdToken()
       const result = await this._createSession(idToken, name)
-      // Sign out of Firebase client — user must explicitly log in next
-      await window._firebaseAuth.signOut()
+      // Keep Firebase client session alive — Django cookies are now set
+      if (result.success && result.created) {
+        setTimeout(() => { window.location.href = '/profile/' }, 1500)
+      }
       return result
     } catch (err) {
       return { error: _firebaseError(err) }
