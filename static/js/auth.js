@@ -22,7 +22,6 @@ const Auth = {
    */
   async _createSession(idToken, name = '') {
     try {
-      // Ensure Django has set the CSRF cookie before we POST
       if (!getCsrfToken()) {
         await fetch('/api/auth/csrf/', { credentials: 'include' })
       }
@@ -32,14 +31,21 @@ const Auth = {
         credentials: 'include',
         body: JSON.stringify({ idToken, name }),
       })
+      console.log('[Auth] firebase-session status:', res.status)
+      const text = await res.text()
+      console.log('[Auth] firebase-session response:', text)
       if (!res.ok) {
-        const text = await res.text()
         let msg = 'Authentication failed.'
         try { msg = JSON.parse(text).error || msg } catch { }
         return { error: msg }
       }
-      return res.json()
-    } catch {
+      try {
+        return JSON.parse(text)
+      } catch {
+        return { error: 'Unexpected server response.' }
+      }
+    } catch (err) {
+      console.error('[Auth] _createSession network error:', err)
       return { error: 'Network error. Check your connection.' }
     }
   },
@@ -79,10 +85,14 @@ const Auth = {
     try {
       const provider = new GoogleAuthProvider()
       const cred = await signInWithPopup(window._firebaseAuth, provider)
+      console.log('[Auth] Google sign-in OK, getting ID token...')
       const idToken = await cred.user.getIdToken()
+      console.log('[Auth] Exchanging token with Django...')
       const result = await this._createSession(idToken, cred.user.displayName || '')
+      console.log('[Auth] Session result:', result)
       return result
     } catch (err) {
+      console.error('[Auth] Google sign-in error:', err.code, err.message, err)
       if (err.code === 'auth/popup-closed-by-user') return { error: null }
       return { error: _firebaseError(err) }
     }
