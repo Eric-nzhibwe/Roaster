@@ -707,14 +707,32 @@ body { overflow: hidden; }
 #sidebar-close { display: none; }
 
 @media (max-width: 768px) {
-  .chat-sidebar { transform: translateX(-100%); }
+  .chat-sidebar {
+    transform: translateX(-100%);
+    /* Ensure sidebar renders above layout on mobile */
+    position: fixed;
+    z-index: 50;
+  }
   .chat-sidebar.open { transform: translateX(0); box-shadow: 0 0 60px rgba(0,0,0,.7); }
+  #sidebar-overlay { z-index: 49; }
   .chat-main { margin-left: 0 !important; }
   #sidebar-close { display: flex !important; }
   .mobile-menu-btn { display: flex !important; }
-  #messages { padding: 1.25rem 1rem; }
-  .chat-input-bar { padding: .75rem 1rem 1rem; }
-  .msg-user-wrap { max-width: 86%; }
-  .msg-ai-wrap { max-width: 90%; }
+
+  /* Header — hide History link, only keep theme toggle */
+  .header-history-link { display: none !important; }
+  .chat-header { padding: 0 .875rem; gap: .625rem; }
+
+  /* Messages */
+  #messages { padding: 1rem .875rem; gap: 1rem; }
+
+  /* Bubbles */
+  .msg-user-wrap { max-width: 88%; }
+  .msg-ai-wrap { max-width: 92%; }
   .msg-actions { opacity: 1; }
+
+  /* Input bar */
+  .chat-input-bar { padding: .625rem .875rem .875rem; }
+  .input-footer { font-size: .6rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #msg-input { font-size: .85rem; }
 }

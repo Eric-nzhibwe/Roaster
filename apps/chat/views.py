@@ -43,6 +43,7 @@ def chat_stream(request):
     persona        = data.get('persona', 'default')
     bio            = data.get('bio', '')
     image_base64   = data.get('imageBase64') or None
+    image_mime     = data.get('imageMime') or 'image/jpeg'
     conversation_id = data.get('conversationId') or None
 
     user = _get_user(request)
@@ -75,7 +76,7 @@ def chat_stream(request):
             if conversation:
                 yield f"data: {json.dumps({'conversationId': str(conversation.id)})}\n\n"
 
-            for delta in stream_roast(history, intensity, persona, bio, image_base64, topic_blacklist):
+            for delta in stream_roast(history, intensity, persona, bio, image_base64, image_mime, topic_blacklist):
                 full_response += delta
                 yield f"data: {json.dumps({'choices': [{'delta': {'content': delta}}]})}\n\n"
 

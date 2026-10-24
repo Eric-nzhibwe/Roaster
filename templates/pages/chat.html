@@ -113,12 +113,17 @@
             </div>
             <div style="margin-left:auto;display:flex;align-items:center;gap:.5rem">
                 <button class="theme-btn" aria-label="Toggle theme"><i class="fa-solid fa-sun"></i></button>
-                <a href="/history/" class="btn btn-ghost" style="padding:.4rem .875rem;font-size:.78rem">History</a>
+                <a href="/history/" class="btn btn-ghost header-history-link" style="padding:.4rem .875rem;font-size:.78rem">History</a>
             </div>
         </header>
 
         <!-- Messages -->
-        <div id="messages"></div>
+        <div id="messages">
+            <div class="chat-empty" id="empty-state">
+                <i class="fa-solid fa-fire"></i>
+                <p>Say something to get roasted</p>
+            </div>
+        </div>
 
         <!-- Input bar -->
         <div class="chat-input-bar">
@@ -143,7 +148,7 @@
                 </button>
 
                 <div class="input-textarea-wrap">
-                    <textarea id="msg-input" placeholder="Say something... or just send your photo" rows="1"
+                    <textarea id="msg-input" placeholder="Say something... or upload a photo" rows="1"
                         oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,140)+'px'"
                         onkeydown="handleKey(event)"></textarea>
                     <span class="input-hint">↵</span>
@@ -156,8 +161,7 @@
                     <i class="fa-solid fa-stop"></i>
                 </button>
             </div>
-            <div class="input-footer">Shift+Enter for new line · Enter to send · Roaster can tend to be offensive,so
-                bear with it.</div>
+            <div class="input-footer">Shift+Enter for new line · Enter to send · Roaster can be offensive</div>
         </div>
 
     </div>
@@ -211,7 +215,16 @@
         const ov = document.getElementById('sidebar-overlay')
         const open = sb.classList.toggle('open')
         ov.style.display = open ? 'block' : 'none'
+        document.body.style.overflow = open ? 'hidden' : ''
     }
+
+    // Close sidebar when a nav link is tapped on mobile
+    document.querySelectorAll('.sidebar-nav-section a').forEach(link => {
+        link.addEventListener('click', () => {
+            const sb = document.getElementById('sidebar')
+            if (sb.classList.contains('open')) toggleSidebar()
+        })
+    })
 
     function handleKey(e) {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
@@ -222,7 +235,12 @@
         if (file.size > 5 * 1024 * 1024) { showToast('Image must be under 5MB', 'error'); return }
         const reader = new FileReader()
         reader.onload = (ev) => {
-            imageData = { preview: ev.target.result, base64: ev.target.result.split(',')[1], name: file.name }
+            imageData = {
+                preview: ev.target.result,
+                base64: ev.target.result.split(',')[1],
+                mime: file.type,
+                name: file.name,
+            }
             document.getElementById('preview-img').src = ev.target.result
             document.getElementById('preview-name').textContent = file.name
             document.getElementById('image-preview').classList.add('visible')
@@ -263,6 +281,7 @@
                     messages, intensity, persona,
                     bio: document.getElementById('bio-input').value,
                     imageBase64: imageData?.base64 || null,
+                    imageMime: imageData?.mime || 'image/jpeg',
                     conversationId,
                 }),
             })
@@ -321,6 +340,9 @@
     }
 
     function appendMessage(role, content, image = null, streamId = null) {
+        // Hide empty state on first message
+        const emptyState = document.getElementById('empty-state')
+        if (emptyState) emptyState.remove()
         const row = document.createElement('div')
         row.className = `msg-row ${role}`
         if (streamId) row.dataset.id = streamId

@@ -128,7 +128,7 @@ def build_system_prompt(intensity='medium', persona='default', bio='', topic_bla
     )
 
 
-def build_messages(history, image_base64=None, system_prompt=''):
+def build_messages(history, image_base64=None, image_mime='image/jpeg', system_prompt=''):
     messages = [{'role': 'system', 'content': system_prompt}]
 
     # Keep last 12 messages for context (enough for callback burns)
@@ -145,7 +145,7 @@ def build_messages(history, image_base64=None, system_prompt=''):
                 content.append({'type': 'text', 'text': 'Roast me based on this photo. Go.'})
             content.append({
                 'type': 'image_url',
-                'image_url': {'url': f"data:image/jpeg;base64,{image_base64}"}
+                'image_url': {'url': f"data:{image_mime};base64,{image_base64}"}
             })
             messages.append({'role': 'user', 'content': content})
         else:
@@ -154,14 +154,14 @@ def build_messages(history, image_base64=None, system_prompt=''):
     return messages
 
 
-def stream_roast(history, intensity='medium', persona='default', bio='', image_base64=None, topic_blacklist=None):
+def stream_roast(history, intensity='medium', persona='default', bio='', image_base64=None, image_mime='image/jpeg', topic_blacklist=None):
     """Generator that yields text chunks from Groq."""
     client = get_client()
     system_prompt = build_system_prompt(intensity, persona, bio, topic_blacklist)
-    messages = build_messages(history, image_base64, system_prompt)
+    messages = build_messages(history, image_base64, image_mime, system_prompt)
 
-    # Use the best available model — vision-capable for images, fast for text
-    model = 'openai/gpt-oss-120b' if image_base64 else 'openai/gpt-oss-120b'
+    # Vision model for images, fast text model otherwise
+    model = 'meta-llama/llama-4-scout-17b-16e-instruct' if image_base64 else 'llama-3.3-70b-versatile'
 
     stream = client.chat.completions.create(
         model=model,
