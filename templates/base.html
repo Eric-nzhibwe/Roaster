@@ -21,29 +21,33 @@
 <body>
   {% block body %}{% endblock %}
 
-  <!-- Firebase Web SDK (modular, loaded as ES module) -->
+  <!--
+    Firebase initializes as an ES module (always deferred by the browser).
+    Once ready it injects auth.js as a regular script so auth.js is
+    guaranteed to run AFTER window._firebaseAuth and window.firebaseAuth exist.
+  -->
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js'
-    import * as fbAuth from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js'
+    import * as fbAuth       from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js'
 
-    const firebaseConfig = {
-      apiKey: "{{ FIREBASE_CONFIG.apiKey }}",
-      authDomain: "{{ FIREBASE_CONFIG.authDomain }}",
-      projectId: "{{ FIREBASE_CONFIG.projectId }}",
+    const app = initializeApp({
+      apiKey:            "{{ FIREBASE_CONFIG.apiKey }}",
+      authDomain:        "{{ FIREBASE_CONFIG.authDomain }}",
+      projectId:         "{{ FIREBASE_CONFIG.projectId }}",
       messagingSenderId: "{{ FIREBASE_CONFIG.messagingSenderId }}",
-      appId: "{{ FIREBASE_CONFIG.appId }}",
-    }
+      appId:             "{{ FIREBASE_CONFIG.appId }}",
+    })
 
-    const app = initializeApp(firebaseConfig)
-    window._firebaseAuth = fbAuth.getAuth(app)
-    window.firebaseAuth = fbAuth
-
-    // Signal that Firebase is ready
+    window._firebaseAuth  = fbAuth.getAuth(app)
+    window.firebaseAuth   = fbAuth
     window._firebaseReady = true
-    window.dispatchEvent(new Event('firebase-ready'))
+
+    // Inject auth.js AFTER Firebase is on window — no race condition possible
+    const s = document.createElement('script')
+    s.src = "{% static 'js/auth.js' %}"
+    document.body.appendChild(s)
   </script>
 
-  <script src="{% static 'js/auth.js' %}"></script>
   {% block extra_js %}{% endblock %}
 </body>
 

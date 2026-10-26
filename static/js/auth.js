@@ -1,127 +1,131 @@
 /**
- * auth.js
- * Firebase client-side auth + Django session exchange.
- * Firebase handles email/password and Google sign-in.
- * On success, we POST the Firebase ID token to Django which
- * verifies it and sets httpOnly JWT cookies for API calls.
+ * auth.js — loaded only after Firebase is initialised (injected by base.html)
+ * so window._firebaseAuth and window.firebaseAuth are always available.
  */
 
-// ── Wait for Firebase module script to finish ──
-function _waitForFirebase() {
-  return new Promise((resolve) => {
-    if (window._firebaseReady) return resolve()
-    window.addEventListener('firebase-ready', () => resolve(), { once: true })
-  })
+// ─────────────────────────────────────────────
+// CSRF helper — fetches the cookie if missing
+// ─────────────────────────────────────────────
+async function getCSRF() {
+  let token = _readCsrfCookie()
+  if (!token) {
+    await fetch('/api/auth/csrf/', { credentials: 'include' })
+    token = _readCsrfCookie()
+  }
+  return token || ''
 }
 
-const Auth = {
-  /**
-   * Exchange a Firebase ID token for Django session cookies.
-   * @param {string} idToken - Firebase ID token
-   * @param {string} [name]  - Display name (signup only)
-   */
-  async _createSession(idToken, name = '') {
-    try {
-      // Ensure CSRF cookie exists — fetch it and wait, then re-read
-      let csrf = getCsrfToken()
-      if (!csrf) {
-        await fetch('/api/auth/csrf/', { credentials: 'include' })
-        // Small delay to let the browser commit the Set-Cookie header
-        await new Promise(r => setTimeout(r, 50))
-        csrf = getCsrfToken()
-      }
-      const res = await fetch('/api/auth/firebase-session/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
-        credentials: 'include',
-        body: JSON.stringify({ idToken, name }),
-      })
-      console.log('[Auth] firebase-session status:', res.status)
-      const text = await res.text()
-      console.log('[Auth] firebase-session response:', text)
-      if (!res.ok) {
-        let msg = 'Authentication failed.'
-        try { msg = JSON.parse(text).error || msg } catch { }
-        return { error: msg }
-      }
-      try {
-        return JSON.parse(text)
-      } catch {
-        return { error: 'Unexpected server response.' }
-      }
-    } catch (err) {
-      console.error('[Auth] _createSession network error:', err)
-      return { error: 'Network error. Check your connection.' }
-    }
-  },
+function _readCsrfCookie() {
+  const match = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/)
+  return match ? decodeURIComponent(match[1]) : ''
+}
 
-  async signupWithEmail(name, email, password) {
-    await _waitForFirebase()
-    const { createUserWithEmailAndPassword, updateProfile } = window.firebaseAuth
+// ─────────────────────────────────────────────
+// Core session exchange — Firebase ID token → Django JWT cookies
+// ─────────────────────────────────────────────
+async function _createSession(idToken, name = '') {
+  const csrf = await getCSRF()
+  let res, text
+  try {
+    res  = await fetch('/api/auth/firebase-session/', {
+      method:      'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken':  csrf,
+      },
+      body: JSON.stringify({ idToken, name }),
+    })
+    text = await res.text()
+  } catch {
+    return { error: 'Network error. Check your connection.' }
+  }
+
+  if (!res.ok) {
+    let msg = 'Authentication failed.'
+    try { msg = JSON.parse(text).error || msg } catch { /* non-JSON error body */ }
+    return { error: msg }
+  }
+
+  try {
+    return JSON.parse(text)          // { success: true, user: {...}, created: bool }
+  } catch {
+    return { error: 'Unexpected server response.' }
+  }
+}
+
+// ─────────────────────────────────────────────
+// Public Auth API
+// ─────────────────────────────────────────────
+const Auth = {
+
+  async loginWithGoogle() {
+    const { GoogleAuthProvider, signInWithPopup } = window.firebaseAuth
     try {
-      const cred = await createUserWithEmailAndPassword(window._firebaseAuth, email, password)
-      await updateProfile(cred.user, { displayName: name })
-      const idToken = await cred.user.getIdToken()
-      const result = await this._createSession(idToken, name)
-      if (result.success) {
-        setTimeout(() => { window.location.href = '/chat/' }, 1500)
-      }
-      return result
+      const provider = new GoogleAuthProvider()
+      provider.addScope('email')
+      provider.addScope('profile')
+      const cred    = await signInWithPopup(window._firebaseAuth, provider)
+      const idToken = await cred.user.getIdToken(/* forceRefresh */ true)
+      return _createSession(idToken, cred.user.displayName || '')
     } catch (err) {
+      if (err.code === 'auth/popup-closed-by-user' ||
+          err.code === 'auth/cancelled-popup-request') {
+        return { cancelled: true }
+      }
       return { error: _firebaseError(err) }
     }
   },
 
   async loginWithEmail(email, password) {
-    await _waitForFirebase()
     const { signInWithEmailAndPassword } = window.firebaseAuth
     try {
-      const cred = await signInWithEmailAndPassword(window._firebaseAuth, email, password)
-      const idToken = await cred.user.getIdToken()
-      return this._createSession(idToken)
+      const cred    = await signInWithEmailAndPassword(window._firebaseAuth, email, password)
+      const idToken = await cred.user.getIdToken(true)
+      return _createSession(idToken)
     } catch (err) {
       return { error: _firebaseError(err) }
     }
   },
 
-  async loginWithGoogle() {
-    await _waitForFirebase()
-    const { GoogleAuthProvider, signInWithPopup } = window.firebaseAuth
+  async signupWithEmail(name, email, password) {
+    const { createUserWithEmailAndPassword, updateProfile } = window.firebaseAuth
     try {
-      const provider = new GoogleAuthProvider()
-      const cred = await signInWithPopup(window._firebaseAuth, provider)
-      console.log('[Auth] Google sign-in OK, getting ID token...')
-      const idToken = await cred.user.getIdToken()
-      console.log('[Auth] Exchanging token with Django...')
-      const result = await this._createSession(idToken, cred.user.displayName || '')
-      console.log('[Auth] Session result:', result)
-      return result
+      const cred = await createUserWithEmailAndPassword(window._firebaseAuth, email, password)
+      await updateProfile(cred.user, { displayName: name })
+      // Force-refresh so the token carries the updated displayName
+      const idToken = await cred.user.getIdToken(true)
+      return _createSession(idToken, name)
     } catch (err) {
-      console.error('[Auth] Google sign-in error:', err.code, err.message, err)
-      if (err.code === 'auth/popup-closed-by-user') return { error: null }
       return { error: _firebaseError(err) }
     }
   },
 
   async logout() {
-    try { await window._firebaseAuth.signOut() } catch { }
-    await fetch('/api/auth/logout/', {
-      method: 'POST',
-      headers: { 'X-CSRFToken': getCsrfToken() },
-      credentials: 'include',
-    })
+    try { await window._firebaseAuth.signOut() } catch { /* best-effort */ }
+    try {
+      await fetch('/api/auth/logout/', {
+        method:      'POST',
+        credentials: 'include',
+        headers:     { 'X-CSRFToken': await getCSRF() },
+      })
+    } catch { /* best-effort */ }
     window.location.href = '/'
   },
 
+  /** Returns the current user object or null. */
   async getUser() {
     try {
       const res = await fetch('/api/auth/me/', { credentials: 'include' })
       if (!res.ok) return null
       const data = await res.json()
       return data.user || null
-    } catch { return null }
+    } catch {
+      return null
+    }
   },
 
+  /** Redirect to login if no valid session. */
   requireAuth(redirectTo = '/login/') {
     this.getUser().then(user => {
       if (!user) window.location.href = redirectTo
@@ -129,37 +133,33 @@ const Auth = {
   },
 }
 
-// ── Firebase error → human-readable message ──
+// ─────────────────────────────────────────────
+// Firebase error codes → user-facing messages
+// ─────────────────────────────────────────────
 function _firebaseError(err) {
   const map = {
-    'auth/email-already-in-use': 'An account with this email already exists.',
-    'auth/invalid-email': 'Invalid email address.',
-    'auth/weak-password': 'Password must be at least 6 characters.',
-    'auth/user-not-found': 'No account found with this email.',
-    'auth/wrong-password': 'Incorrect password.',
-    'auth/invalid-credential': 'Incorrect email or password.',
-    'auth/too-many-requests': 'Too many attempts. Try again later.',
+    'auth/email-already-in-use':   'An account with this email already exists.',
+    'auth/invalid-email':          'Invalid email address.',
+    'auth/weak-password':          'Password must be at least 6 characters.',
+    'auth/user-not-found':         'No account found with this email.',
+    'auth/wrong-password':         'Incorrect password.',
+    'auth/invalid-credential':     'Incorrect email or password.',
+    'auth/too-many-requests':      'Too many attempts. Try again later.',
     'auth/network-request-failed': 'Network error. Check your connection.',
-    'auth/popup-blocked': 'Popup blocked. Allow popups for this site.',
+    'auth/popup-blocked':          'Popup blocked — allow popups for this site.',
+    'auth/user-disabled':          'This account has been disabled.',
   }
   return map[err.code] || err.message || 'Authentication failed.'
 }
 
-// ── CSRF ──
-function getCsrfToken() {
-  return document.cookie.split('; ').find(r => r.startsWith('csrftoken='))?.split('=')[1] || ''
-}
-
-// ── Toast ──
+// ─────────────────────────────────────────────
+// Toast
+// ─────────────────────────────────────────────
 function showToast(msg, type = 'info') {
-  const existing = document.querySelector('.toast')
-  if (existing) existing.remove()
-  const toast = document.createElement('div')
-  toast.className = 'toast'
+  document.querySelector('.toast')?.remove()
+  const toast = Object.assign(document.createElement('div'), { className: 'toast', textContent: msg })
   const colors = { error: '#FF4757', success: '#00D4AA', info: '#8B949E' }
-  toast.style.borderLeftColor = colors[type] || colors.info
-  toast.style.borderLeftWidth = '3px'
-  toast.textContent = msg
+  toast.style.cssText = `border-left: 3px solid ${colors[type] || colors.info}`
   document.body.appendChild(toast)
   setTimeout(() => {
     toast.style.opacity = '0'
@@ -168,26 +168,26 @@ function showToast(msg, type = 'info') {
   }, 3000)
 }
 
-// ── Theme ──
+// ─────────────────────────────────────────────
+// Theme
+// ─────────────────────────────────────────────
 function initTheme() {
   const saved = localStorage.getItem('theme') || 'dark'
   if (saved === 'light') document.documentElement.classList.add('light')
   document.querySelectorAll('.theme-btn').forEach(btn => {
-    btn.innerHTML = saved === 'dark'
-      ? '<i class="fa-solid fa-sun"></i>'
-      : '<i class="fa-solid fa-moon"></i>'
+    btn.innerHTML = saved === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>'
     btn.addEventListener('click', () => {
-      const isDark = !document.documentElement.classList.contains('light')
-      document.documentElement.classList.toggle('light', isDark)
-      localStorage.setItem('theme', isDark ? 'light' : 'dark')
-      btn.innerHTML = isDark
-        ? '<i class="fa-solid fa-moon"></i>'
-        : '<i class="fa-solid fa-sun"></i>'
+      const goLight = !document.documentElement.classList.contains('light')
+      document.documentElement.classList.toggle('light', goLight)
+      localStorage.setItem('theme', goLight ? 'light' : 'dark')
+      btn.innerHTML = goLight ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-solid fa-sun"></i>'
     })
   })
 }
 
-// ── Nav scroll ──
+// ─────────────────────────────────────────────
+// Nav scroll
+// ─────────────────────────────────────────────
 function initNavScroll() {
   const nav = document.querySelector('nav')
   if (!nav) return

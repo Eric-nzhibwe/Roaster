@@ -1,3 +1,6 @@
+import logging
+import threading
+
 from django.conf import settings
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -5,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from firebase_admin import auth as firebase_auth
+
 from .models import User
 from .serializers import UserSerializer, UpdateProfileSerializer
 from .firestore_service import (
@@ -12,74 +16,94 @@ from .firestore_service import (
     log_signup, log_login, log_profile_updated, log_account_deleted,
 )
 
+logger = logging.getLogger(__name__)
 
-def get_tokens(user):
+
+# ─────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────
+
+def _get_tokens(user):
     refresh = RefreshToken.for_user(user)
-    return {
-        'access': str(refresh.access_token),
-        'refresh': str(refresh),
-    }
+    return {'access': str(refresh.access_token), 'refresh': str(refresh)}
 
 
-def set_auth_cookies(response, tokens):
+def _set_auth_cookies(response, tokens):
     secure = not settings.DEBUG
     response.set_cookie(
         'access_token', tokens['access'],
         max_age=7 * 24 * 3600,
-        httponly=True, secure=secure, samesite='Lax', path='/'
+        httponly=True, secure=secure, samesite='Lax', path='/',
     )
     response.set_cookie(
         'refresh_token', tokens['refresh'],
         max_age=30 * 24 * 3600,
-        httponly=True, secure=secure, samesite='Lax', path='/'
+        httponly=True, secure=secure, samesite='Lax', path='/',
     )
 
 
-def _verify_firebase_token(id_token):
-    """Verify Firebase ID token and return decoded claims, or raise."""
-    return firebase_auth.verify_id_token(id_token)
+def _firestore_sync(user, uid, created, email, provider_key):
+    """Run Firestore writes in a background thread — never blocks the response."""
+    try:
+        sync_user(user, uid, is_new=created)
+        if created:
+            log_signup(uid, email, provider_key)
+        else:
+            log_login(uid)
+    except Exception:
+        logger.exception('Firestore sync failed for uid=%s', uid)
 
+
+# ─────────────────────────────────────────────
+# Views
+# ─────────────────────────────────────────────
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def firebase_session(request):
     """
-    Exchange a Firebase ID token for a Django session (JWT cookies).
-    Used by both login and signup flows — Firebase handles the distinction.
-    POST body: { "idToken": "<firebase-id-token>", "name": "<optional display name>" }
+    Exchange a Firebase ID token for Django JWT cookies.
+    Handles both sign-up and sign-in — Firebase determines which.
+
+    POST body: { "idToken": "<firebase-id-token>", "name": "<display name>" }
     """
     id_token = request.data.get('idToken', '').strip()
     if not id_token:
         return Response({'error': 'idToken is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # ── Verify token with Firebase Admin SDK ──
     try:
-        decoded = _verify_firebase_token(id_token)
+        decoded = firebase_auth.verify_id_token(id_token)
     except firebase_auth.ExpiredIdTokenError:
         return Response({'error': 'Session expired. Please sign in again.'}, status=status.HTTP_401_UNAUTHORIZED)
+    except firebase_auth.RevokedIdTokenError:
+        return Response({'error': 'Session revoked. Please sign in again.'}, status=status.HTTP_401_UNAUTHORIZED)
     except firebase_auth.InvalidIdTokenError:
         return Response({'error': 'Invalid token.'}, status=status.HTTP_401_UNAUTHORIZED)
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).exception('firebase_session token verification failed: %s', e)
+    except Exception:
+        logger.exception('firebase_session: token verification failed')
         return Response({'error': 'Authentication failed.'}, status=status.HTTP_401_UNAUTHORIZED)
 
-    uid = decoded['uid']
-    email = decoded.get('email', '')
-    display_name = request.data.get('name') or decoded.get('name', '') or email.split('@')[0]
-    provider = decoded.get('firebase', {}).get('sign_in_provider', 'password')
+    uid          = decoded['uid']
+    email        = decoded.get('email', '')
+    display_name = (
+        request.data.get('name')
+        or decoded.get('name', '')
+        or email.split('@')[0]
+    )
+    provider     = decoded.get('firebase', {}).get('sign_in_provider', 'password')
     provider_key = 'google' if 'google' in provider else 'email'
 
-    # Get or create Django user keyed on Firebase UID (stored in username)
+    # ── Upsert Django user (keyed on Firebase UID stored as username) ──
     user, created = User.objects.get_or_create(
         username=uid,
         defaults={
-            'email': email,
+            'email':      email,
             'first_name': display_name,
-            'provider': provider_key,
-        }
+            'provider':   provider_key,
+        },
     )
 
-    # Keep email/name in sync on every login
     if not created:
         changed = False
         if email and user.email != email:
@@ -91,20 +115,21 @@ def firebase_session(request):
         if changed:
             user.save(update_fields=['email', 'first_name'])
 
-    tokens = get_tokens(user)
+    # ── Issue JWT cookies ──
+    tokens   = _get_tokens(user)
     response = Response({
         'success': True,
         'created': created,
-        'user': UserSerializer(user).data,
+        'user':    UserSerializer(user).data,
     })
-    set_auth_cookies(response, tokens)
+    _set_auth_cookies(response, tokens)
 
-    # Sync to Firestore (non-blocking — failures are logged, not raised)
-    sync_user(user, uid, is_new=created)
-    if created:
-        log_signup(uid, email, provider_key)
-    else:
-        log_login(uid)
+    # ── Firestore sync (non-blocking) ──
+    threading.Thread(
+        target=_firestore_sync,
+        args=(user, uid, created, email, provider_key),
+        daemon=True,
+    ).start()
 
     return response
 
@@ -113,8 +138,8 @@ def firebase_session(request):
 @permission_classes([AllowAny])
 def logout(request):
     response = Response({'success': True})
-    response.delete_cookie('access_token')
-    response.delete_cookie('refresh_token')
+    response.delete_cookie('access_token',  path='/')
+    response.delete_cookie('refresh_token', path='/')
     return response
 
 
@@ -132,17 +157,21 @@ def update_profile(request):
         return Response({'error': str(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
     serializer.save()
 
-    # Propagate changes to Firestore
-    uid = request.user.username  # username stores Firebase UID
-    update_user_profile(uid, {
-        'display_name':      request.user.first_name,
-        'bio':               request.user.bio,
-        'default_intensity': request.user.default_intensity,
-        'default_persona':   request.user.default_persona,
-        'topic_blacklist':   request.user.topic_blacklist,
-    })
-    log_profile_updated(uid)
+    uid = request.user.username
+    def _sync():
+        try:
+            update_user_profile(uid, {
+                'display_name':      request.user.first_name,
+                'bio':               request.user.bio,
+                'default_intensity': request.user.default_intensity,
+                'default_persona':   request.user.default_persona,
+                'topic_blacklist':   request.user.topic_blacklist,
+            })
+            log_profile_updated(uid)
+        except Exception:
+            logger.exception('Firestore profile update failed for uid=%s', uid)
 
+    threading.Thread(target=_sync, daemon=True).start()
     return Response({'user': UserSerializer(request.user).data})
 
 
@@ -151,9 +180,17 @@ def update_profile(request):
 def delete_account(request):
     uid = request.user.username
     request.user.delete()
-    delete_user_document(uid)
-    log_account_deleted(uid)
+
+    def _sync():
+        try:
+            delete_user_document(uid)
+            log_account_deleted(uid)
+        except Exception:
+            logger.exception('Firestore delete failed for uid=%s', uid)
+
+    threading.Thread(target=_sync, daemon=True).start()
+
     response = Response({'success': True})
-    response.delete_cookie('access_token')
-    response.delete_cookie('refresh_token')
+    response.delete_cookie('access_token',  path='/')
+    response.delete_cookie('refresh_token', path='/')
     return response
