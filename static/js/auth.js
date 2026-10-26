@@ -22,12 +22,17 @@ const Auth = {
    */
   async _createSession(idToken, name = '') {
     try {
-      if (!getCsrfToken()) {
+      // Ensure CSRF cookie exists — fetch it and wait, then re-read
+      let csrf = getCsrfToken()
+      if (!csrf) {
         await fetch('/api/auth/csrf/', { credentials: 'include' })
+        // Small delay to let the browser commit the Set-Cookie header
+        await new Promise(r => setTimeout(r, 50))
+        csrf = getCsrfToken()
       }
       const res = await fetch('/api/auth/firebase-session/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
         credentials: 'include',
         body: JSON.stringify({ idToken, name }),
       })
