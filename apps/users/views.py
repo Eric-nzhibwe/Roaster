@@ -58,7 +58,9 @@ def firebase_session(request):
         return Response({'error': 'Session expired. Please sign in again.'}, status=status.HTTP_401_UNAUTHORIZED)
     except firebase_auth.InvalidIdTokenError:
         return Response({'error': 'Invalid token.'}, status=status.HTTP_401_UNAUTHORIZED)
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception('firebase_session token verification failed: %s', e)
         return Response({'error': 'Authentication failed.'}, status=status.HTTP_401_UNAUTHORIZED)
 
     uid = decoded['uid']

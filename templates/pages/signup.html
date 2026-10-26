@@ -103,8 +103,8 @@ document.getElementById('google-btn').addEventListener('click', async (e) => {
   if (data?.error) {
     errEl.textContent = data.error
     errEl.style.display = 'block'
-  } else if (data && !data.success) {
-    errEl.textContent = data.detail || 'Sign-in failed. Please try again.'
+  } else {
+    errEl.textContent = data?.detail || JSON.stringify(data) || 'Sign-in failed. Please try again.'
     errEl.style.display = 'block'
   }
 })
