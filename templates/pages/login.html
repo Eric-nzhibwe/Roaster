@@ -74,20 +74,20 @@
 
 {% block extra_js %}
 <script>
-(function () {
+// Show signup success banner immediately — doesn't need Auth
+if (new URLSearchParams(window.location.search).get('welcome') === '1') {
+  document.getElementById('success-msg').style.display = 'flex'
+  document.getElementById('page-title').textContent = 'One last step!'
+  document.getElementById('page-sub').textContent   = 'Sign in to start your first roasting session.'
+}
+
+document.addEventListener('auth:ready', function () {
   const errEl     = document.getElementById('error-msg')
   const googleBtn = document.getElementById('google-btn')
 
-  // ── Show signup success banner ──
-  if (new URLSearchParams(window.location.search).get('welcome') === '1') {
-    document.getElementById('success-msg').style.display = 'flex'
-    document.getElementById('page-title').textContent = 'One last step!'
-    document.getElementById('page-sub').textContent   = 'Sign in to start your first roasting session.'
-  }
-
   function showError(msg) {
-    errEl.textContent    = msg
-    errEl.style.display  = 'block'
+    errEl.textContent   = msg
+    errEl.style.display = 'block'
   }
 
   function setLoading(btn, loading, originalHTML) {
@@ -135,7 +135,7 @@
     btn.innerHTML = orig
     showError(result.error || 'Sign-in failed. Please try again.')
   })
-})()
+})
 </script>
 {% endblock %}
 {% endblock %}

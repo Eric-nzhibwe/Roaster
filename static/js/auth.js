@@ -110,6 +110,7 @@ const Auth = {
         headers:     { 'X-CSRFToken': await getCSRF() },
       })
     } catch { /* best-effort */ }
+    // Always redirect regardless of whether sign-out calls succeeded
     window.location.href = '/'
   },
 

@@ -123,10 +123,11 @@
 </main>
 
 <script>
-Auth.getUser().then(user => {
-  if (!user) { window.location.href = '/login/'; return }
-  populateProfile(user)
-})
+// ── CSRF helper (mirrors auth.js but available immediately for fetch calls) ──
+function getCsrfToken() {
+  const m = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/)
+  return m ? decodeURIComponent(m[1]) : ''
+}
 
 function populateProfile(user) {
   document.getElementById('profile-name').textContent = user.name || 'Anonymous'
@@ -143,43 +144,51 @@ function populateProfile(user) {
   }
 }
 
-document.getElementById('profile-form').addEventListener('submit', async (e) => {
-  e.preventDefault()
-  const btn = document.getElementById('save-btn')
-  const successEl = document.getElementById('success-msg')
-  const errEl = document.getElementById('error-msg')
-  btn.disabled = true
-  btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-top-color:#000"></span> Saving...'
-  successEl.style.display = 'none'
-  errEl.style.display = 'none'
-
-  const res = await fetch('/api/auth/profile/', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-    credentials: 'include',
-    body: JSON.stringify({
-      name:              document.getElementById('field-name').value,
-      bio:               document.getElementById('field-bio').value,
-      default_intensity: document.getElementById('field-intensity').value,
-      default_persona:   document.getElementById('field-persona').value,
-    })
+document.addEventListener('auth:ready', function () {
+  Auth.getUser().then(user => {
+    if (!user) { window.location.href = '/login/'; return }
+    populateProfile(user)
   })
 
-  const data = await res.json()
-  btn.disabled = false
-  btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Changes'
+  document.getElementById('profile-form').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const btn = document.getElementById('save-btn')
+    const successEl = document.getElementById('success-msg')
+    const errEl = document.getElementById('error-msg')
+    btn.disabled = true
+    btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-top-color:#000"></span> Saving...'
+    successEl.style.display = 'none'
+    errEl.style.display = 'none'
 
-  if (data.user) {
-    populateProfile(data.user)
-    successEl.style.display = 'flex'
-    setTimeout(() => { successEl.style.display = 'none' }, 3000)
-  } else {
-    errEl.textContent = data.error || 'Update failed.'
-    errEl.style.display = 'block'
-  }
+    const res = await fetch('/api/auth/profile/', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+      credentials: 'include',
+      body: JSON.stringify({
+        name:              document.getElementById('field-name').value,
+        bio:               document.getElementById('field-bio').value,
+        default_intensity: document.getElementById('field-intensity').value,
+        default_persona:   document.getElementById('field-persona').value,
+      })
+    })
+
+    const data = await res.json()
+    btn.disabled = false
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Changes'
+
+    if (data.user) {
+      populateProfile(data.user)
+      successEl.style.display = 'flex'
+      setTimeout(() => { successEl.style.display = 'none' }, 3000)
+    } else {
+      errEl.textContent = data.error || 'Update failed.'
+      errEl.style.display = 'block'
+    }
+  })
 })
 
 async function handleLogout() {
+  // Auth available by the time user can click this (page already loaded)
   await Auth.logout()
 }
 

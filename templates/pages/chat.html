@@ -173,9 +173,11 @@
     const messagesEl = document.getElementById('messages')
     const inputEl = document.getElementById('msg-input')
 
-    Auth.getUser().then(user => {
-        if (!user) window.location.href = '/login/'
-        else addWelcomeMessage()
+    document.addEventListener('auth:ready', () => {
+        Auth.getUser().then(user => {
+            if (!user) window.location.href = '/login/'
+            else addWelcomeMessage()
+        })
     })
 
     function addWelcomeMessage() {

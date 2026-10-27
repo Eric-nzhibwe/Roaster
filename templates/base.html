@@ -45,6 +45,9 @@
     // Inject auth.js AFTER Firebase is on window — no race condition possible
     const s = document.createElement('script')
     s.src = "{% static 'js/auth.js' %}"
+    // Fire 'auth:ready' once auth.js has fully executed so any inline page
+    // scripts that depend on Auth can safely call it.
+    s.onload = () => document.dispatchEvent(new Event('auth:ready'))
     document.body.appendChild(s)
   </script>
 
