@@ -122,17 +122,24 @@ document.addEventListener('auth:ready', function () {
     btn.disabled  = true
     btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-top-color:#000"></span> Signing in...'
 
-    const result = await Auth.loginWithEmail(
-      document.getElementById('email').value.trim(),
-      document.getElementById('password').value
-    )
+    let result
+    try {
+      result = await Auth.loginWithEmail(
+        document.getElementById('email').value.trim(),
+        document.getElementById('password').value
+      )
+    } catch (unexpectedErr) {
+      result = { error: 'Unexpected error. Please try again.' }
+    }
+
+    // Always reset the button before doing anything else
+    btn.disabled  = false
+    btn.innerHTML = orig
 
     if (result.success) {
       window.location.href = '/chat/'
       return
     }
-    btn.disabled  = false
-    btn.innerHTML = orig
     showError(result.error || 'Sign-in failed. Please try again.')
   })
 })

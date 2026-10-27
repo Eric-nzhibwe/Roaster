@@ -78,11 +78,16 @@ def firebase_session(request):
         return Response({'error': 'Session expired. Please sign in again.'}, status=status.HTTP_401_UNAUTHORIZED)
     except firebase_auth.RevokedIdTokenError:
         return Response({'error': 'Session revoked. Please sign in again.'}, status=status.HTTP_401_UNAUTHORIZED)
-    except firebase_auth.InvalidIdTokenError:
+    except firebase_auth.InvalidIdTokenError as e:
+        logger.warning('firebase_session: invalid token — %s', e)
         return Response({'error': 'Invalid token.'}, status=status.HTTP_401_UNAUTHORIZED)
-    except Exception:
-        logger.exception('firebase_session: token verification failed')
-        return Response({'error': 'Authentication failed.'}, status=status.HTTP_401_UNAUTHORIZED)
+    except ValueError as e:
+        # Raised when the token is malformed or the Firebase app isn't initialised
+        logger.error('firebase_session: ValueError verifying token — %s', e)
+        return Response({'error': f'Token error: {e}'}, status=status.HTTP_401_UNAUTHORIZED)
+    except Exception as e:
+        logger.exception('firebase_session: token verification failed — %s', e)
+        return Response({'error': f'Authentication failed: {e}'}, status=status.HTTP_401_UNAUTHORIZED)
 
     uid          = decoded['uid']
     email        = decoded.get('email', '')

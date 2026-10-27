@@ -129,14 +129,21 @@ document.addEventListener('auth:ready', function () {
     btn.disabled  = true
     btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-top-color:#000"></span> Creating...'
 
-    const result = await Auth.signupWithEmail(name, email, pw)
+    let result
+    try {
+      result = await Auth.signupWithEmail(name, email, pw)
+    } catch (unexpectedErr) {
+      result = { error: 'Unexpected error. Please try again.' }
+    }
+
+    // Always reset the button before doing anything else
+    btn.disabled  = false
+    btn.innerHTML = orig
 
     if (result.success) {
       window.location.href = '/login/?welcome=1'
       return
     }
-    btn.disabled  = false
-    btn.innerHTML = orig
     showError(result.error || 'Signup failed. Please try again.')
   })
 })

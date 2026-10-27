@@ -89,14 +89,25 @@ const Auth = {
   },
 
   async signupWithEmail(name, email, password) {
-    const { createUserWithEmailAndPassword, updateProfile } = window.firebaseAuth
+    const { createUserWithEmailAndPassword, updateProfile, deleteUser } = window.firebaseAuth
+    let cred = null
     try {
-      const cred = await createUserWithEmailAndPassword(window._firebaseAuth, email, password)
+      cred = await createUserWithEmailAndPassword(window._firebaseAuth, email, password)
       await updateProfile(cred.user, { displayName: name })
       // Force-refresh so the token carries the updated displayName
       const idToken = await cred.user.getIdToken(true)
-      return _createSession(idToken, name)
+      const result = await _createSession(idToken, name)
+      if (!result.success) {
+        // Django rejected the token — clean up the Firebase account so the
+        // user isn't stuck with a half-created account and can retry cleanly.
+        try { await deleteUser(cred.user) } catch { /* best-effort cleanup */ }
+      }
+      return result
     } catch (err) {
+      // If Firebase account was created but something else threw, clean it up
+      if (cred) {
+        try { await deleteUser(cred.user) } catch { /* best-effort cleanup */ }
+      }
       return { error: _firebaseError(err) }
     }
   },
