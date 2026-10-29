@@ -169,6 +169,7 @@
 
 <script>
     let messages = [], intensity = 'medium', persona = 'default', conversationId = null, imageData = null, abortCtrl = null
+    let isStreaming = false   // guard against duplicate submissions
 
     const messagesEl = document.getElementById('messages')
     const inputEl = document.getElementById('msg-input')
@@ -265,6 +266,7 @@
     async function sendMessage() {
         const text = inputEl.value.trim()
         if (!text && !imageData) return
+        if (isStreaming) return   // prevent duplicate submissions
 
         const userMsg = { role: 'user', content: text, image: imageData?.preview }
         messages.push({ role: 'user', content: text })
@@ -272,11 +274,13 @@
         appendMessage('user', text, userMsg.image)
         inputEl.value = ''
         inputEl.style.height = '46px'
+        const capturedImageData = imageData   // snapshot before removeImage clears it
         removeImage()
+        isStreaming = true
         setLoading(true)
 
         const streamId = 'ai_' + Date.now()
-        appendMessage('assistant', '', null, streamId)
+        const aiRow = appendMessage('assistant', '', null, streamId)
 
         try {
             abortCtrl = new AbortController()
@@ -288,8 +292,8 @@
                 body: JSON.stringify({
                     messages, intensity, persona,
                     bio: document.getElementById('bio-input').value,
-                    imageBase64: imageData?.base64 || null,
-                    imageMime: imageData?.mime || 'image/jpeg',
+                    imageBase64: capturedImageData?.base64 || null,
+                    imageMime: capturedImageData?.mime || 'image/jpeg',
                     conversationId,
                 }),
             })
@@ -310,39 +314,51 @@
                     try {
                         const parsed = JSON.parse(d)
                         if (parsed.conversationId) { conversationId = parsed.conversationId; continue }
-                        // Surface server-side errors into the bubble
                         if (parsed.error) {
-                            const bubble = document.querySelector(`[data-id="${streamId}"] .bubble-text`)
+                            const bubble = aiRow.querySelector('.bubble-text')
                             if (bubble) { bubble.textContent = 'Something went wrong — try again.'; bubble.style.color = 'var(--red)' }
+                            aiRow.querySelectorAll('.typing-dots').forEach(el => el.remove())
                             done = true; break
                         }
                         const delta = parsed.choices?.[0]?.delta?.content || ''
                         if (!delta) continue
                         full += delta
-                        const bubble = document.querySelector(`[data-id="${streamId}"] .bubble-text`)
-                        if (bubble) bubble.textContent = full
+                        const bubble = aiRow.querySelector('.bubble-text')
+                        if (bubble) {
+                            // Remove typing dots on first real content
+                            aiRow.querySelectorAll('.typing-dots').forEach(el => el.remove())
+                            bubble.textContent = full
+                        }
                         messagesEl.scrollTop = messagesEl.scrollHeight
                     } catch { }
                 }
             }
 
-            // Guard against blank bubble — shouldn't happen but just in case
             if (!full) {
-                const bubble = document.querySelector(`[data-id="${streamId}"] .bubble-text`)
+                const bubble = aiRow.querySelector('.bubble-text')
                 if (bubble && !bubble.style.color) {
                     bubble.textContent = '...crickets. Try sending something.'
                     bubble.style.color = 'var(--text-muted)'
                 }
+                aiRow.querySelectorAll('.typing-dots').forEach(el => el.remove())
             }
 
             messages.push({ role: 'assistant', content: full })
-            finalizeMessage(streamId, full)
+            finalizeMessage(streamId, full, aiRow)
         } catch (err) {
-            if (err.name !== 'AbortError') {
-                const bubble = document.querySelector(`[data-id="${streamId}"] .bubble-text`)
+            const bubble = aiRow.querySelector('.bubble-text')
+            if (err.name === 'AbortError') {
+                // User stopped the stream — keep whatever was streamed so far
+                if (bubble && !bubble.textContent.trim()) {
+                    bubble.textContent = '— stopped —'
+                    bubble.style.color = 'var(--text-muted)'
+                }
+            } else {
                 if (bubble) { bubble.textContent = 'Something went wrong. Try again.'; bubble.style.color = 'var(--red)' }
             }
+            aiRow.querySelectorAll('.typing-dots').forEach(el => el.remove())
         } finally {
+            isStreaming = false
             setLoading(false)
         }
     }
@@ -386,20 +402,26 @@
         return row
     }
 
-    function finalizeMessage(streamId, content) {
-        const row = document.querySelector(`[data-id="${streamId}"]`)
+    function finalizeMessage(streamId, content, row) {
+        if (!row) row = document.querySelector(`[data-id="${streamId}"]`)
         if (!row) return
-        // Always remove typing dots
         row.querySelectorAll('.typing-dots').forEach(el => el.remove())
 
-        if (!content) return  // error was already displayed in bubble
+        if (!content) return
 
         const actionsEl = document.getElementById(`actions-${streamId}`)
         if (actionsEl) {
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            const shareBtn = document.createElement('button')
+            shareBtn.className = 'action-btn'
+            shareBtn.title = 'Share'
+            shareBtn.innerHTML = '<i class="fa-solid fa-arrow-up-from-bracket"></i> Share'
+            shareBtn.addEventListener('click', () => shareRoast(content))
+
             actionsEl.innerHTML = `
-      <span style="font-size:.68rem;color:var(--text-muted)">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-      <button class="action-btn" onclick="copyText(this,'${streamId}')" title="Copy"><i class="fa-regular fa-copy"></i> Copy</button>
-      <button class="action-btn" onclick="shareRoast('${escAttr(content)}')" title="Share"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share</button>`
+      <span style="font-size:.68rem;color:var(--text-muted)">${now}</span>
+      <button class="action-btn" onclick="copyText(this,'${streamId}')" title="Copy"><i class="fa-regular fa-copy"></i> Copy</button>`
+            actionsEl.appendChild(shareBtn)
         }
     }
 

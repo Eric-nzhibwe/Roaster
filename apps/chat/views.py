@@ -1,7 +1,6 @@
 import json
 import logging
 from django.http import StreamingHttpResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -23,7 +22,6 @@ def _get_user(request):
         return None
 
 
-@csrf_exempt
 @require_POST
 def chat_stream(request):
     """
@@ -55,6 +53,16 @@ def chat_stream(request):
         if conversation_id:
             try:
                 conversation = Conversation.objects.get(id=conversation_id, user=user)
+                # Keep metadata in sync if the user changed settings mid-session
+                changed = False
+                if conversation.intensity != intensity:
+                    conversation.intensity = intensity
+                    changed = True
+                if conversation.persona != persona:
+                    conversation.persona = persona
+                    changed = True
+                if changed:
+                    conversation.save(update_fields=['intensity', 'persona'])
             except Conversation.DoesNotExist:
                 pass
         if not conversation:
