@@ -171,20 +171,7 @@ _firebase_private_key = os.environ.get('FIREBASE_PRIVATE_KEY', '').replace('\\n'
 
 FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID', '')
 
-if FIREBASE_PROJECT_ID and not firebase_admin._apps:
-    _fb_cred = fb_credentials.Certificate({
-        "type": "service_account",
-        "project_id": FIREBASE_PROJECT_ID,
-        "private_key_id": os.environ.get('FIREBASE_PRIVATE_KEY_ID', ''),
-        "private_key": _firebase_private_key,
-        "client_email": os.environ.get('FIREBASE_CLIENT_EMAIL', ''),
-        "client_id": os.environ.get('FIREBASE_CLIENT_ID', ''),
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "client_x509_cert_url": os.environ.get('FIREBASE_CLIENT_CERT_URL', ''),
-    })
-    firebase_admin.initialize_app(_fb_cred)
-elif not FIREBASE_PROJECT_ID:
+if not FIREBASE_PROJECT_ID:
     import warnings
     warnings.warn(
         "\n\n*** FIREBASE_PROJECT_ID is not set. ***\n"
@@ -194,6 +181,32 @@ elif not FIREBASE_PROJECT_ID:
         RuntimeWarning,
         stacklevel=2,
     )
+elif firebase_admin._apps:
+    # Already initialised (e.g. during hot-reload) — skip
+    pass
+else:
+    try:
+        _fb_cred = fb_credentials.Certificate({
+            "type": "service_account",
+            "project_id": FIREBASE_PROJECT_ID,
+            "private_key_id": os.environ.get('FIREBASE_PRIVATE_KEY_ID', ''),
+            "private_key": _firebase_private_key,
+            "client_email": os.environ.get('FIREBASE_CLIENT_EMAIL', ''),
+            "client_id": os.environ.get('FIREBASE_CLIENT_ID', ''),
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "client_x509_cert_url": os.environ.get('FIREBASE_CLIENT_CERT_URL', ''),
+        })
+        firebase_admin.initialize_app(_fb_cred)
+        print(f'[settings] Firebase Admin SDK initialised for project: {FIREBASE_PROJECT_ID}')
+    except Exception as e:
+        print(f'\n[settings] *** Firebase Admin SDK FAILED to initialise ***')
+        print(f'[settings] Error: {e}')
+        print(f'[settings] verify_id_token() will fail and all logins will return 401.')
+        print(f'[settings] Common fixes:')
+        print(f'[settings]   - FIREBASE_PRIVATE_KEY must contain \\n (literal backslash-n), not real newlines')
+        print(f'[settings]   - All FIREBASE_* env vars must be non-empty')
+        print(f'[settings]   - Service account must be from the same project as the web SDK\n')
 
 # Firebase Web SDK config (injected into templates via context processor)
 FIREBASE_WEB_CONFIG = {
