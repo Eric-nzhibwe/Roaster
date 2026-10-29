@@ -72,6 +72,17 @@ def firebase_session(request):
         return Response({'error': 'idToken is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
     # ── Verify token with Firebase Admin SDK ──
+    # First check if Firebase Admin was even initialised at startup
+    if not firebase_admin._apps:
+        logger.error(
+            'firebase_session: Firebase Admin SDK is NOT initialised. '
+            'Check FIREBASE_PROJECT_ID and FIREBASE_PRIVATE_KEY in the environment.'
+        )
+        return Response({
+            'error': 'Server error: Firebase Admin is not configured. '
+                     'Check that FIREBASE_PROJECT_ID and FIREBASE_PRIVATE_KEY are set.',
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     try:
         decoded = firebase_auth.verify_id_token(id_token)
     except firebase_auth.ExpiredIdTokenError:
@@ -80,7 +91,7 @@ def firebase_session(request):
         return Response({'error': 'Session revoked. Please sign in again.'}, status=status.HTTP_401_UNAUTHORIZED)
     except firebase_auth.InvalidIdTokenError as e:
         logger.warning('firebase_session: invalid token — %s', e)
-        return Response({'error': 'Invalid token.'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({'error': f'Invalid token: {e}'}, status=status.HTTP_401_UNAUTHORIZED)
     except ValueError as e:
         # Raised when the token is malformed or the Firebase app isn't initialised
         logger.error('firebase_session: ValueError verifying token — %s', e)
