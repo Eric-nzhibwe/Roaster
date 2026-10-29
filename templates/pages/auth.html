@@ -585,7 +585,7 @@
 <script>
 // ── CSRF ──
 function getCsrfToken() {
-  const m = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/)
+  const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/)
   return m ? decodeURIComponent(m[1]) : ''
 }
 
@@ -697,6 +697,9 @@ async function handleForgotPassword() {
 
 // ── All auth logic runs after auth.js is ready ──
 document.addEventListener('auth:ready', function () {
+
+  // Bounce already-authenticated users straight to the app
+  Auth.redirectIfAuthed()
 
   // ── Google ──
   const googleBtn = document.getElementById('google-btn')

@@ -123,9 +123,11 @@
 </main>
 
 <script>
-// ── CSRF helper (mirrors auth.js but available immediately for fetch calls) ──
+// Sync CSRF cookie reader — auth.js exposes async getCSRF() for fetch calls
+// that need a fresh seed, but for inline fetch calls the cookie is always
+// already set by the time the user can interact with the page.
 function getCsrfToken() {
-  const m = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/)
+  const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/)
   return m ? decodeURIComponent(m[1]) : ''
 }
 
@@ -146,7 +148,7 @@ function populateProfile(user) {
 
 document.addEventListener('auth:ready', function () {
   Auth.getUser().then(user => {
-    if (!user) { window.location.href = '/login/'; return }
+    if (!user) { window.location.href = '/auth/'; return }
     populateProfile(user)
   })
 

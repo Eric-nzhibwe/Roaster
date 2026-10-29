@@ -48,7 +48,7 @@ document.addEventListener('auth:ready', () => Auth.requireAuth())
 
 // ── CSRF helper ──
 function getCsrfToken() {
-  const m = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/)
+  const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/)
   return m ? decodeURIComponent(m[1]) : ''
 }
 
