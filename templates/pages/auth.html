@@ -695,11 +695,12 @@ async function handleForgotPassword() {
   }
 }
 
+// ── Redirect already-authed users before showing the form ──
+// Runs as soon as auth.js loads — no need to wait for form interaction
+document.addEventListener('auth:ready', function () { Auth.redirectIfAuthed() }, { once: true })
+
 // ── All auth logic runs after auth.js is ready ──
 document.addEventListener('auth:ready', function () {
-
-  // Bounce already-authenticated users straight to the app
-  Auth.redirectIfAuthed()
 
   // ── Google ──
   const googleBtn = document.getElementById('google-btn')
