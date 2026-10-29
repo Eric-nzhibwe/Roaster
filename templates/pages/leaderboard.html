@@ -73,6 +73,12 @@
     const MEDALS = ['<i class="fa-solid fa-trophy" style="color:#FFD700"></i>', '<i class="fa-solid fa-trophy" style="color:#C0C0C0"></i>', '<i class="fa-solid fa-trophy" style="color:#CD7F32"></i>']
     let votedIds = new Set()
 
+    // ── CSRF helper ──
+    function getCsrfToken() {
+      const m = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/)
+      return m ? decodeURIComponent(m[1]) : ''
+    }
+
     // Sample fallback data shown while/if API has no public roasts yet
     const SAMPLE_ROASTS = [
         { id: 's1', content: "Your LinkedIn says 'entrepreneur' but your bank account says 'sponsored by mom'.", upvotes: 847, intensity: 'nuclear', persona: 'default', user_name: 'Alex K.' },

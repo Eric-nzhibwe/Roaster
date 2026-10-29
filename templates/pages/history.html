@@ -46,6 +46,12 @@ let page = 1, totalPages = 1, favOnly = false
 // Wait for auth.js before using Auth
 document.addEventListener('auth:ready', () => Auth.requireAuth())
 
+// ── CSRF helper ──
+function getCsrfToken() {
+  const m = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/)
+  return m ? decodeURIComponent(m[1]) : ''
+}
+
 const INTENSITY_EMOJI = {light:'<i class="fa-regular fa-face-smile-wink"></i>',medium:'<i class="fa-regular fa-face-angry"></i>',savage:'<i class="fa-solid fa-fire"></i>',nuclear:'<i class="fa-solid fa-skull-crossbones"></i>'}
 const PERSONA_LABEL = {default:'<i class="fa-solid fa-robot"></i> Default',gordon:'<i class="fa-solid fa-utensils"></i> Gordon',parent:'<i class="fa-solid fa-heart-crack"></i> Parent',shakespeare:'<i class="fa-solid fa-masks-theater"></i> Shakespeare','4chan':'<i class="fa-solid fa-skull"></i> 4chan',evil_ai:'<i class="fa-solid fa-virus"></i> Evil AI'}
 

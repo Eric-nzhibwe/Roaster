@@ -138,7 +138,7 @@ const Auth = {
   },
 
   /** Redirect to login if no valid session. */
-  requireAuth(redirectTo = '/login/') {
+  requireAuth(redirectTo = '/auth/') {
     this.getUser().then(user => {
       if (!user) window.location.href = redirectTo
     })

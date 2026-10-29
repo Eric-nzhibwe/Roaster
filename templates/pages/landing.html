@@ -13,11 +13,11 @@
     </a>
     <div class="desktop-only" style="display:flex;gap:.25rem;align-items:center">
         <a href="/leaderboard/" class="nav-link"><i class="fa-solid fa-ranking-star"></i> Leaderboard</a>
-        <a href="/login/" class="nav-link">Log in</a>
+        <a href="/auth/" class="nav-link">Log in</a>
     </div>
     <button class="theme-btn" aria-label="Toggle theme"><i class="fa-solid fa-sun"></i></button>
     <div style="display:flex;gap:.5rem" class="desktop-only">
-        <a href="/signup/" class="btn btn-primary" style="padding:.4rem 1.25rem;font-size:.85rem">
+        <a href="/auth/" class="btn btn-primary" style="padding:.4rem 1.25rem;font-size:.85rem">
             <i class="fa-solid fa-bolt"></i> Get Roasted Free
         </a>
     </div>
@@ -30,8 +30,8 @@
 <div id="mobile-menu"
     style="display:none;position:fixed;top:64px;left:0;right:0;z-index:99;background:var(--bg-card);border-bottom:1px solid var(--border-subtle);padding:1rem 1.5rem;flex-direction:column;gap:.5rem">
     <a href="/leaderboard/" class="nav-link" style="display:block;padding:.625rem .75rem">Leaderboard</a>
-    <a href="/login/" class="btn btn-ghost" style="width:100%;margin-top:.5rem">Log in</a>
-    <a href="/signup/" class="btn btn-primary" style="width:100%">Get Roasted Free</a>
+    <a href="/auth/" class="btn btn-ghost" style="width:100%;margin-top:.5rem">Log in</a>
+    <a href="/auth/" class="btn btn-primary" style="width:100%">Get Roasted Free</a>
 </div>
 
 <!-- Hero -->
@@ -57,7 +57,7 @@
     </p>
 
     <div class="fade-in-up" style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:.75rem">
-        <a href="/signup/" class="btn btn-primary"
+        <a href="/auth/" class="btn btn-primary"
             style="font-size:1rem;padding:.9rem 2.25rem;border-radius:12px;gap:.6rem">
             <i class="fa-solid fa-bolt"></i> Get Roasted — It's Free
         </a>
@@ -197,7 +197,7 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem">
             {% for p in personas %}
-            <a href="/signup/" class="card"
+            <a href="/auth/" class="card"
                 style="padding:1.5rem 1rem;text-align:center;cursor:pointer;transition:all .22s;text-decoration:none;display:block;position:relative;overflow:hidden"
                 onmouseover="this.style.borderColor='rgba(0,212,170,.35)';this.style.transform='translateY(-5px)';this.style.background='rgba(0,212,170,.04)'"
                 onmouseout="this.style.borderColor='var(--border-subtle)';this.style.transform='translateY(0)';this.style.background=''">
@@ -255,7 +255,7 @@
                 users who found out exactly what the AI thinks of them.</p>
             <p style="color:var(--text-muted);font-size:.82rem;margin-bottom:2rem">Spoiler: it's not impressed. But it
                 IS entertained.</p>
-            <a href="/signup/" class="btn btn-primary"
+            <a href="/auth/" class="btn btn-primary"
                 style="font-size:1.05rem;padding:.95rem 2.75rem;border-radius:12px;gap:.65rem">
                 <i class="fa-solid fa-bolt"></i> Start for Free
             </a>

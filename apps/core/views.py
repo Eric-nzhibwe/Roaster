@@ -28,10 +28,10 @@ def landing(request):
     return render(request, 'pages/landing.html', LANDING_CONTEXT)
 
 def login_page(request):
-    return render(request, 'pages/login.html')
+    return render(request, 'pages/auth.html')
 
 def signup_page(request):
-    return render(request, 'pages/signup.html')
+    return render(request, 'pages/auth.html')
 
 def chat_page(request):
     return render(request, 'pages/chat.html')
