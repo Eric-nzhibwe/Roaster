@@ -152,16 +152,21 @@
 
   /**
    * Called automatically when /api/auth/me/ returns 401.
-   * Tries to use the refresh_token cookie to mint a new access_token.
+   * Skips the network call entirely if the refresh_token cookie is absent
+   * (no point hitting the server when we know it'll return 401).
    * Returns true on success, false if the session is genuinely expired.
    */
   async function _tryRefresh() {
+    // Quick cookie check — if there's no refresh token cookie there's nothing to refresh
+    const hasRefreshCookie = /(?:^|;\s*)refresh_token=/.test(document.cookie)
+    if (!hasRefreshCookie) return false
+
     try {
       const csrf = await getCSRF()
       const res  = await fetch(API.REFRESH, {
         method:      'POST',
         credentials: 'include',
-        headers: { 'X-CSRFToken': csrf },
+        headers:     { 'X-CSRFToken': csrf },
       })
       return res.ok
     } catch {
@@ -311,9 +316,15 @@
      * Returns the authenticated user object from the Django session,
      * or null if not authenticated.
      *
+     * Skips network calls entirely when no auth cookies are present.
      * Attempts a silent token refresh on 401 before giving up.
      */
     async getUser() {
+      // If neither auth cookie exists, skip the network round-trip entirely
+      const hasAccessCookie  = /(?:^|;\s*)access_token=/.test(document.cookie)
+      const hasRefreshCookie = /(?:^|;\s*)refresh_token=/.test(document.cookie)
+      if (!hasAccessCookie && !hasRefreshCookie) return null
+
       try {
         let res = await fetch(API.ME, { credentials: 'include' })
 

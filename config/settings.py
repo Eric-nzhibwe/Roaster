@@ -184,6 +184,16 @@ if FIREBASE_PROJECT_ID and not firebase_admin._apps:
         "client_x509_cert_url": os.environ.get('FIREBASE_CLIENT_CERT_URL', ''),
     })
     firebase_admin.initialize_app(_fb_cred)
+elif not FIREBASE_PROJECT_ID:
+    import warnings
+    warnings.warn(
+        "\n\n*** FIREBASE_PROJECT_ID is not set. ***\n"
+        "Firebase Admin SDK will NOT be initialised.\n"
+        "All calls to verify_id_token() will raise ValueError and return 401.\n"
+        "Set FIREBASE_PROJECT_ID (and all other FIREBASE_* vars) in your .env or Render dashboard.\n",
+        RuntimeWarning,
+        stacklevel=2,
+    )
 
 # Firebase Web SDK config (injected into templates via context processor)
 FIREBASE_WEB_CONFIG = {
