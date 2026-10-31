@@ -30,13 +30,24 @@
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js'
     import * as fbAuth       from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js'
 
-    const app = initializeApp({
+    const firebaseConfig = {
       apiKey:            "{{ FIREBASE_CONFIG.apiKey }}",
       authDomain:        "{{ FIREBASE_CONFIG.authDomain }}",
       projectId:         "{{ FIREBASE_CONFIG.projectId }}",
       messagingSenderId: "{{ FIREBASE_CONFIG.messagingSenderId }}",
       appId:             "{{ FIREBASE_CONFIG.appId }}",
-    })
+    }
+
+    // Warn loudly in development if config values are missing
+    const missingKeys = Object.entries(firebaseConfig)
+      .filter(([, v]) => !v || v.startsWith('your-') || v === 'AIzaSy...')
+      .map(([k]) => k)
+    if (missingKeys.length) {
+      console.error('[Roaster] Firebase Web SDK config is incomplete. Missing/placeholder values for:', missingKeys)
+      console.error('[Roaster] Fill in the FIREBASE_* variables in your .env file.')
+    }
+
+    const app = initializeApp(firebaseConfig)
 
     window._firebaseAuth  = fbAuth.getAuth(app)
     window.firebaseAuth   = fbAuth
@@ -45,9 +56,12 @@
     // Inject auth.js AFTER Firebase is on window — no race condition possible
     const s = document.createElement('script')
     s.src = "{% static 'js/auth.js' %}"
-    // Fire 'auth:ready' once auth.js has fully executed so any inline page
-    // scripts that depend on Auth can safely call it.
-    s.onload = () => document.dispatchEvent(new Event('auth:ready'))
+    // Fire 'auth:ready' once auth.js has fully executed.
+    // Also set a flag so pages that register the listener late can still react.
+    s.onload = () => {
+      window._authReady = true
+      document.dispatchEvent(new Event('auth:ready'))
+    }
     document.body.appendChild(s)
   </script>
 
