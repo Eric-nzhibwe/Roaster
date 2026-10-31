@@ -39,6 +39,8 @@ services:
         sync: false
       - key: FIREBASE_APP_ID
         sync: false
+      - key: RENDER_EXTERNAL_URL
+        value: "https://roaster-vf3e.onrender.com"
 
 databases:
   - name: roaster-ai-db

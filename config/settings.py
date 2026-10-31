@@ -157,8 +157,12 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
 ]
 if _render_url:
-    # Strip trailing slash to avoid mismatches
     CSRF_TRUSTED_ORIGINS.append(_render_url.rstrip('/'))
+else:
+    # Fallback: trust all onrender.com subdomains when RENDER_EXTERNAL_URL isn't set
+    CSRF_TRUSTED_ORIGINS.append('https://*.onrender.com')
+
+print(f'[settings] CSRF_TRUSTED_ORIGINS: {CSRF_TRUSTED_ORIGINS}')
 
 # Groq
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
