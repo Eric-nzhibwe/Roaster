@@ -85,20 +85,19 @@ def firebase_session(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     try:
-        decoded = firebase_auth.verify_id_token(id_token)
+        decoded = firebase_auth.verify_id_token(id_token, clock_skew_seconds=60)
     except firebase_auth.ExpiredIdTokenError:
         return Response({'error': 'Session expired. Please sign in again.'}, status=status.HTTP_401_UNAUTHORIZED)
     except firebase_auth.RevokedIdTokenError:
         return Response({'error': 'Session revoked. Please sign in again.'}, status=status.HTTP_401_UNAUTHORIZED)
     except firebase_auth.InvalidIdTokenError as e:
-        logger.warning('firebase_session: invalid token — %s', e)
+        logger.error('firebase_session: InvalidIdTokenError — %s', e)
         return Response({'error': f'Invalid token: {e}'}, status=status.HTTP_401_UNAUTHORIZED)
     except ValueError as e:
-        # Raised when the token is malformed or the Firebase app isn't initialised
-        logger.error('firebase_session: ValueError verifying token — %s', e)
+        logger.error('firebase_session: ValueError — %s', e)
         return Response({'error': f'Token error: {e}'}, status=status.HTTP_401_UNAUTHORIZED)
     except Exception as e:
-        logger.exception('firebase_session: token verification failed — %s', e)
+        logger.exception('firebase_session: unexpected error — %s', e)
         return Response({'error': f'Authentication failed: {e}'}, status=status.HTTP_401_UNAUTHORIZED)
 
     uid          = decoded['uid']

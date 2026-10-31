@@ -128,11 +128,13 @@
     }
 
     if (!res.ok) {
-      let msg = 'Authentication failed. Please try again.'
+      let msg = `Authentication failed (${res.status}). Please try again.`
       try {
         const parsed = JSON.parse(body)
         if (parsed.error) msg = parsed.error
+        if (parsed.detail) msg = parsed.detail
       } catch { /* body was not JSON */ }
+      console.error('[Auth] firebase-session failed:', res.status, body)
       return { error: msg }
     }
 
