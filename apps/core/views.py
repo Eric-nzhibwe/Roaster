@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from apps.users.authentication import CookieJWTAuthentication
 
@@ -32,7 +33,7 @@ def _check_auth(request):
         auth = CookieJWTAuthentication()
         user_auth = auth.authenticate(request)
         return user_auth is not None
-    except (InvalidToken, TokenError):
+    except (InvalidToken, TokenError, AuthenticationFailed):
         return False
 
 def landing(request):
