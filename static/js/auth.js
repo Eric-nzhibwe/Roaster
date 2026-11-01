@@ -159,10 +159,6 @@
    * Returns true on success, false if the session is genuinely expired.
    */
   async function _tryRefresh() {
-    // Quick cookie check — if there's no refresh token cookie there's nothing to refresh
-    const hasRefreshCookie = /(?:^|;\s*)refresh_token=/.test(document.cookie)
-    if (!hasRefreshCookie) return false
-
     try {
       const csrf = await getCSRF()
       const res  = await fetch(API.REFRESH, {
@@ -322,11 +318,6 @@
      * Attempts a silent token refresh on 401 before giving up.
      */
     async getUser() {
-      // If neither auth cookie exists, skip the network round-trip entirely
-      const hasAccessCookie  = /(?:^|;\s*)access_token=/.test(document.cookie)
-      const hasRefreshCookie = /(?:^|;\s*)refresh_token=/.test(document.cookie)
-      if (!hasAccessCookie && !hasRefreshCookie) return null
-
       try {
         let res = await fetch(API.ME, { credentials: 'include' })
 
