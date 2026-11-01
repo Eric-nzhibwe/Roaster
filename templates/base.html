@@ -53,11 +53,9 @@
     window.firebaseAuth   = fbAuth
     window._firebaseReady = true
 
-    // Inject auth.js AFTER Firebase is on window — no race condition possible
+    // Inject roaster-session.js AFTER Firebase is on window — no race condition possible
     const s = document.createElement('script')
-    s.src = "{% static 'js/auth.js' %}"
-    // Fire 'auth:ready' once auth.js has fully executed.
-    // Also set a flag so pages that register the listener late can still react.
+    s.src = "{% static 'js/roaster-session.js' %}"
     s.onload = () => {
       window._authReady = true
       document.dispatchEvent(new Event('auth:ready'))

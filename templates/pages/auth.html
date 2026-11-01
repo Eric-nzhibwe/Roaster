@@ -663,7 +663,7 @@
   }
 
   function clearAlerts() {
-    ['alert-error-signin','alert-success-signin','alert-error-signup','alert-success-signup']
+    ['alert-error-signin', 'alert-success-signin', 'alert-error-signup', 'alert-success-signup']
       .forEach(id => document.getElementById(id).style.display = 'none')
   }
 
@@ -716,21 +716,14 @@
     const btn = document.getElementById('forgot-btn')
     btn.disabled = true
     btn.textContent = 'Sending...'
-    try {
-      const { sendPasswordResetEmail } = window.firebaseAuth
-      await sendPasswordResetEmail(window._firebaseAuth, email)
+    const result = await Session.sendPasswordReset(email)
+    if (result.ok) {
       showSuccess(`Reset link sent to ${email}. Check your inbox.`, 'signin')
-    } catch (err) {
-      showError(
-        err.code === 'auth/user-not-found'
-          ? 'No account found with that email.'
-          : 'Failed to send reset email. Try again.',
-        'signin'
-      )
-    } finally {
-      btn.disabled = false
-      btn.textContent = 'Forgot password?'
+    } else {
+      showError(result.error, 'signin')
     }
+    btn.disabled = false
+    btn.textContent = 'Forgot password?'
   }
 
   // ── Helper: run fn now if auth is already ready, otherwise wait ──
@@ -740,9 +733,9 @@
   }
 
   // ── Redirect already-authed users before showing the form ──
-  onAuthReady(function () { Auth.redirectIfAuthed() })
+  onAuthReady(function () { Session.redirectIfLoggedIn() })
 
-  // ── Wire up all auth interactions after auth.js is ready ──
+  // ── Wire up all auth interactions after roaster-session.js is ready ──
   onAuthReady(function () {
 
     // Google
@@ -751,8 +744,8 @@
       clearAlerts()
       const orig = googleBtn.innerHTML
       setLoading(googleBtn, true, orig)
-      const result = await Auth.loginWithGoogle()
-      if (result.success) { window.location.href = '/chat/'; return }
+      const result = await Session.signInWithGoogle()
+      if (result.ok) { window.location.href = '/chat/'; return }
       setLoading(googleBtn, false, orig)
       if (!result.cancelled && result.error) showError(result.error)
     })
@@ -762,16 +755,16 @@
       e.preventDefault()
       clearAlerts()
       const email = document.getElementById('signin-email').value.trim()
-      const pw    = document.getElementById('signin-password').value
+      const pw = document.getElementById('signin-password').value
       if (!email || !pw) { showError('Please fill in all fields.', 'signin'); return }
-      const btn  = document.getElementById('signin-btn')
+      const btn = document.getElementById('signin-btn')
       const orig = btn.innerHTML
       setLoading(btn, true, orig)
       let result
-      try { result = await Auth.loginWithEmail(email, pw) }
-      catch { result = { error: 'Unexpected error. Please try again.' } }
+      try { result = await Session.signInWithEmail(email, pw) }
+      catch { result = { ok: false, error: 'Unexpected error. Please try again.' } }
       setLoading(btn, false, orig)
-      if (result.success) { window.location.href = '/chat/'; return }
+      if (result.ok) { window.location.href = '/chat/'; return }
       showError(result.error || 'Sign-in failed. Please try again.', 'signin')
     })
 
@@ -779,22 +772,22 @@
     document.getElementById('signup-form').addEventListener('submit', async (e) => {
       e.preventDefault()
       clearAlerts()
-      const name    = document.getElementById('signup-name').value.trim()
-      const email   = document.getElementById('signup-email').value.trim()
-      const pw      = document.getElementById('signup-password').value
+      const name = document.getElementById('signup-name').value.trim()
+      const email = document.getElementById('signup-email').value.trim()
+      const pw = document.getElementById('signup-password').value
       const confirm = document.getElementById('signup-confirm').value
-      if (!name)           { showError('Display name is required.', 'signup'); return }
-      if (!email)          { showError('Email is required.', 'signup'); return }
-      if (pw.length < 6)   { showError('Password must be at least 6 characters.', 'signup'); return }
-      if (pw !== confirm)  { showError('Passwords do not match.', 'signup'); return }
-      const btn  = document.getElementById('signup-btn')
+      if (!name) { showError('Display name is required.', 'signup'); return }
+      if (!email) { showError('Email is required.', 'signup'); return }
+      if (pw.length < 6) { showError('Password must be at least 6 characters.', 'signup'); return }
+      if (pw !== confirm) { showError('Passwords do not match.', 'signup'); return }
+      const btn = document.getElementById('signup-btn')
       const orig = btn.innerHTML
       setLoading(btn, true, orig)
       let result
-      try { result = await Auth.signupWithEmail(name, email, pw) }
-      catch { result = { error: 'Unexpected error. Please try again.' } }
+      try { result = await Session.createAccount(name, email, pw) }
+      catch { result = { ok: false, error: 'Unexpected error. Please try again.' } }
       setLoading(btn, false, orig)
-      if (result.success) { window.location.href = '/chat/'; return }
+      if (result.ok) { window.location.href = '/chat/'; return }
       showError(result.error || 'Signup failed. Please try again.', 'signup')
     })
   })

@@ -181,7 +181,7 @@
     }
 
     function _onAuthReady() {
-        Auth.getUser().then(user => {
+        Session.currentUser().then(user => {
             if (!user) window.location.href = '/auth/'
             else addWelcomeMessage()
         })
@@ -456,7 +456,7 @@
     }
 
     async function handleLogout() {
-        await Auth.logout()
+        await Session.signOut()
     }
 
     function escHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') }
