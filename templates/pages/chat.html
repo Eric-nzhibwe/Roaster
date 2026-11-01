@@ -15,8 +15,7 @@
                 <i class="fa-solid fa-fire"></i>
                 <span>Roaster AI</span>
             </a>
-            <button onclick="toggleSidebar()" class="theme-btn" id="sidebar-close"
-                aria-label="Close sidebar">
+            <button onclick="toggleSidebar()" class="theme-btn" id="sidebar-close" aria-label="Close sidebar">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
@@ -113,7 +112,8 @@
             </div>
             <div style="margin-left:auto;display:flex;align-items:center;gap:.5rem">
                 <button class="theme-btn" aria-label="Toggle theme"><i class="fa-solid fa-sun"></i></button>
-                <a href="/history/" class="btn btn-ghost header-history-link" style="padding:.4rem .875rem;font-size:.78rem">History</a>
+                <a href="/history/" class="btn btn-ghost header-history-link"
+                    style="padding:.4rem .875rem;font-size:.78rem">History</a>
             </div>
         </header>
 
@@ -176,16 +176,19 @@
 
     // ── CSRF helper ──
     function getCsrfToken() {
-      const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/)
-      return m ? decodeURIComponent(m[1]) : ''
+        const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/)
+        return m ? decodeURIComponent(m[1]) : ''
     }
 
-    document.addEventListener('auth:ready', () => {
+    function _onAuthReady() {
         Auth.getUser().then(user => {
             if (!user) window.location.href = '/auth/'
             else addWelcomeMessage()
         })
-    })
+    }
+
+    if (window._authReady) _onAuthReady()
+    else document.addEventListener('auth:ready', _onAuthReady, { once: true })
 
     function addWelcomeMessage() {
         const welcomes = [
