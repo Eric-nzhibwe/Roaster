@@ -15,7 +15,7 @@
   <div class="auth-brand">
     <div class="auth-brand-inner">
       <a href="/" class="auth-logo">
-        <i class="fa-solid fa-fire"></i>
+        <i class="fa-solid fa-comment-slash"></i>
         <span>Roaster AI</span>
       </a>
       <h2 class="auth-tagline">Get destroyed.<br>Get better.</h2>
@@ -57,16 +57,6 @@
         <div class="auth-tab-indicator" id="tab-indicator"></div>
       </div>
 
-      <!-- Alert banners -->
-      <div id="alert-success" class="auth-alert auth-alert-success" style="display:none">
-        <i class="fa-solid fa-circle-check"></i>
-        <span id="alert-success-text">Account created! Sign in to continue.</span>
-      </div>
-      <div id="alert-error" class="auth-alert auth-alert-error" style="display:none">
-        <i class="fa-solid fa-circle-exclamation"></i>
-        <span id="alert-error-text">Something went wrong.</span>
-      </div>
-
       <!-- Google button (shared between both panels) -->
       <button id="google-btn" class="btn auth-google-btn" type="button">
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0">
@@ -88,6 +78,16 @@
 
       <!-- ── Sign In panel ── -->
       <div id="panel-signin" role="tabpanel" aria-labelledby="tab-signin">
+
+        <div id="alert-success-signin" class="auth-alert auth-alert-success" style="display:none">
+          <i class="fa-solid fa-circle-check"></i>
+          <span id="alert-success-signin-text"></span>
+        </div>
+        <div id="alert-error-signin" class="auth-alert auth-alert-error" style="display:none">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span id="alert-error-signin-text"></span>
+        </div>
+
         <form id="signin-form" novalidate>
           <div class="auth-field">
             <label for="signin-email">Email</label>
@@ -124,6 +124,16 @@
 
       <!-- ── Sign Up panel ── -->
       <div id="panel-signup" role="tabpanel" aria-labelledby="tab-signup" style="display:none">
+
+        <div id="alert-success-signup" class="auth-alert auth-alert-success" style="display:none">
+          <i class="fa-solid fa-circle-check"></i>
+          <span id="alert-success-signup-text"></span>
+        </div>
+        <div id="alert-error-signup" class="auth-alert auth-alert-error" style="display:none">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span id="alert-error-signup-text"></span>
+        </div>
+
         <form id="signup-form" novalidate>
           <div class="auth-field">
             <label for="signup-name">Display Name</label>
@@ -613,42 +623,48 @@
   // ── Tab switching ──
   function switchTab(tab) {
     const isSignin = tab === 'signin'
-
     document.getElementById('panel-signin').style.display = isSignin ? 'block' : 'none'
     document.getElementById('panel-signup').style.display = isSignin ? 'none' : 'block'
-
     document.getElementById('tab-signin').classList.toggle('active', isSignin)
     document.getElementById('tab-signup').classList.toggle('active', !isSignin)
     document.getElementById('tab-signin').setAttribute('aria-selected', isSignin)
     document.getElementById('tab-signup').setAttribute('aria-selected', !isSignin)
-
-    const indicator = document.getElementById('tab-indicator')
-    indicator.classList.toggle('right', !isSignin)
-
-    // Update page title
+    document.getElementById('tab-indicator').classList.toggle('right', !isSignin)
     document.title = isSignin ? 'Sign In — Roaster AI' : 'Create Account — Roaster AI'
-
     clearAlerts()
   }
 
-  // ── Alerts ──
-  function showError(msg) {
-    const el = document.getElementById('alert-error')
-    document.getElementById('alert-error-text').textContent = msg
-    el.style.display = 'flex'
-    document.getElementById('alert-success').style.display = 'none'
+  // ── Per-panel alerts ──
+  // panel: 'signin' | 'signup' | 'google' (google errors go to active panel)
+  function _activePanel() {
+    return document.getElementById('panel-signup').style.display !== 'none' ? 'signup' : 'signin'
   }
 
-  function showSuccess(msg) {
-    const el = document.getElementById('alert-success')
-    document.getElementById('alert-success-text').textContent = msg
-    el.style.display = 'flex'
-    document.getElementById('alert-error').style.display = 'none'
+  function showError(msg, panel) {
+    panel = panel || _activePanel()
+    const id = panel === 'signup' ? 'alert-error-signup' : 'alert-error-signin'
+    const textId = id + '-text'
+    document.getElementById(textId).textContent = msg
+    document.getElementById(id).style.display = 'flex'
+    // hide success in same panel
+    const successId = panel === 'signup' ? 'alert-success-signup' : 'alert-success-signin'
+    document.getElementById(successId).style.display = 'none'
+  }
+
+  function showSuccess(msg, panel) {
+    panel = panel || _activePanel()
+    const id = panel === 'signup' ? 'alert-success-signup' : 'alert-success-signin'
+    const textId = id + '-text'
+    document.getElementById(textId).textContent = msg
+    document.getElementById(id).style.display = 'flex'
+    // hide error in same panel
+    const errorId = panel === 'signup' ? 'alert-error-signup' : 'alert-error-signin'
+    document.getElementById(errorId).style.display = 'none'
   }
 
   function clearAlerts() {
-    document.getElementById('alert-error').style.display = 'none'
-    document.getElementById('alert-success').style.display = 'none'
+    ['alert-error-signin','alert-success-signin','alert-error-signup','alert-success-signup']
+      .forEach(id => document.getElementById(id).style.display = 'none')
   }
 
   // ── Button loading state ──
@@ -679,13 +695,11 @@
     const label = document.getElementById('strength-label')
     if (!pw) { wrap.style.display = 'none'; return }
     wrap.style.display = 'block'
-
     let width = '15%', color = '#FF4757', text = 'Too short'
     if (pw.length >= 6) { width = '35%'; color = '#FF6B35'; text = 'Weak' }
     if (pw.length >= 8) { width = '60%'; color = '#FFD93D'; text = 'Fair' }
     if (pw.length >= 8 && /[A-Z]/.test(pw) && /[0-9]/.test(pw)) { width = '80%'; color = '#00D4AA'; text = 'Good' }
     if (pw.length >= 10 && /[A-Z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw)) { width = '100%'; color = '#4ADE80'; text = 'Strong' }
-
     fill.style.width = width
     fill.style.background = color
     label.textContent = text
@@ -696,7 +710,7 @@
   async function handleForgotPassword() {
     const email = document.getElementById('signin-email').value.trim()
     if (!email) {
-      showError('Enter your email above first, then click "Forgot password?".')
+      showError('Enter your email above first, then click "Forgot password?".', 'signin')
       return
     }
     const btn = document.getElementById('forgot-btn')
@@ -705,11 +719,14 @@
     try {
       const { sendPasswordResetEmail } = window.firebaseAuth
       await sendPasswordResetEmail(window._firebaseAuth, email)
-      showSuccess(`Reset link sent to ${email}. Check your inbox.`)
+      showSuccess(`Reset link sent to ${email}. Check your inbox.`, 'signin')
     } catch (err) {
-      showError(err.code === 'auth/user-not-found'
-        ? 'No account found with that email.'
-        : 'Failed to send reset email. Try again.')
+      showError(
+        err.code === 'auth/user-not-found'
+          ? 'No account found with that email.'
+          : 'Failed to send reset email. Try again.',
+        'signin'
+      )
     } finally {
       btn.disabled = false
       btn.textContent = 'Forgot password?'
@@ -718,105 +735,68 @@
 
   // ── Helper: run fn now if auth is already ready, otherwise wait ──
   function onAuthReady(fn) {
-    if (window._authReady) {
-      fn()
-    } else {
-      document.addEventListener('auth:ready', fn, { once: true })
-    }
+    if (window._authReady) fn()
+    else document.addEventListener('auth:ready', fn, { once: true })
   }
 
   // ── Redirect already-authed users before showing the form ──
   onAuthReady(function () { Auth.redirectIfAuthed() })
 
-  // ── All auth logic runs after auth.js is ready ──
+  // ── Wire up all auth interactions after auth.js is ready ──
   onAuthReady(function () {
 
-    // ── Google ──
+    // Google
     const googleBtn = document.getElementById('google-btn')
     googleBtn.addEventListener('click', async () => {
       clearAlerts()
       const orig = googleBtn.innerHTML
       setLoading(googleBtn, true, orig)
-
       const result = await Auth.loginWithGoogle()
-
-      if (result.success) {
-        window.location.href = '/chat/'
-        return
-      }
+      if (result.success) { window.location.href = '/chat/'; return }
       setLoading(googleBtn, false, orig)
       if (!result.cancelled && result.error) showError(result.error)
     })
 
-    // ── Sign In ──
+    // Sign In
     document.getElementById('signin-form').addEventListener('submit', async (e) => {
       e.preventDefault()
       clearAlerts()
-
       const email = document.getElementById('signin-email').value.trim()
-      const pw = document.getElementById('signin-password').value
-
-      if (!email || !pw) { showError('Please fill in all fields.'); return }
-
-      const btn = document.getElementById('signin-btn')
+      const pw    = document.getElementById('signin-password').value
+      if (!email || !pw) { showError('Please fill in all fields.', 'signin'); return }
+      const btn  = document.getElementById('signin-btn')
       const orig = btn.innerHTML
       setLoading(btn, true, orig)
-
       let result
-      try {
-        result = await Auth.loginWithEmail(email, pw)
-      } catch {
-        result = { error: 'Unexpected error. Please try again.' }
-      }
-
+      try { result = await Auth.loginWithEmail(email, pw) }
+      catch { result = { error: 'Unexpected error. Please try again.' } }
       setLoading(btn, false, orig)
-
-      if (result.success) {
-        window.location.href = '/chat/'
-        return
-      }
-      showError(result.error || 'Sign-in failed. Please try again.')
+      if (result.success) { window.location.href = '/chat/'; return }
+      showError(result.error || 'Sign-in failed. Please try again.', 'signin')
     })
 
-    // ── Sign Up ──
+    // Sign Up
     document.getElementById('signup-form').addEventListener('submit', async (e) => {
       e.preventDefault()
       clearAlerts()
-
-      const name = document.getElementById('signup-name').value.trim()
-      const email = document.getElementById('signup-email').value.trim()
-      const pw = document.getElementById('signup-password').value
+      const name    = document.getElementById('signup-name').value.trim()
+      const email   = document.getElementById('signup-email').value.trim()
+      const pw      = document.getElementById('signup-password').value
       const confirm = document.getElementById('signup-confirm').value
-
-      if (!name) { showError('Display name is required.'); return }
-      if (!email) { showError('Email is required.'); return }
-      if (pw.length < 6) { showError('Password must be at least 6 characters.'); return }
-      if (pw !== confirm) { showError('Passwords do not match.'); return }
-
-      const btn = document.getElementById('signup-btn')
+      if (!name)           { showError('Display name is required.', 'signup'); return }
+      if (!email)          { showError('Email is required.', 'signup'); return }
+      if (pw.length < 6)   { showError('Password must be at least 6 characters.', 'signup'); return }
+      if (pw !== confirm)  { showError('Passwords do not match.', 'signup'); return }
+      const btn  = document.getElementById('signup-btn')
       const orig = btn.innerHTML
       setLoading(btn, true, orig)
-
       let result
-      try {
-        result = await Auth.signupWithEmail(name, email, pw)
-      } catch {
-        result = { error: 'Unexpected error. Please try again.' }
-      }
-
+      try { result = await Auth.signupWithEmail(name, email, pw) }
+      catch { result = { error: 'Unexpected error. Please try again.' } }
       setLoading(btn, false, orig)
-
-      if (result.success) {
-        window.location.href = '/chat/'
-        return
-      }
-      showError(result.error || 'Signup failed. Please try again.')
+      if (result.success) { window.location.href = '/chat/'; return }
+      showError(result.error || 'Signup failed. Please try again.', 'signup')
     })
-
-    // ── Check for ?welcome=1 from any external redirect ──
-    if (new URLSearchParams(window.location.search).get('welcome') === '1') {
-      showSuccess('Account created! Sign in to get started.')
-    }
   })
 </script>
 {% endblock %}
