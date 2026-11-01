@@ -87,8 +87,10 @@ def firebase_session(request):
     try:
         decoded = firebase_auth.verify_id_token(id_token, clock_skew_seconds=60)
     except firebase_auth.ExpiredIdTokenError:
+        logger.warning('firebase_session: token expired')
         return Response({'error': 'Session expired. Please sign in again.'}, status=status.HTTP_401_UNAUTHORIZED)
     except firebase_auth.RevokedIdTokenError:
+        logger.warning('firebase_session: token revoked')
         return Response({'error': 'Session revoked. Please sign in again.'}, status=status.HTTP_401_UNAUTHORIZED)
     except firebase_auth.InvalidIdTokenError as e:
         logger.error('firebase_session: InvalidIdTokenError — %s', e)
