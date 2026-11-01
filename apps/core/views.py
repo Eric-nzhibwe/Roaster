@@ -1,4 +1,6 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from apps.users.authentication import CookieJWTAuthentication
 
 LANDING_CONTEXT = {
     'stats': [
@@ -24,23 +26,45 @@ LANDING_CONTEXT = {
     ],
 }
 
+def _check_auth(request):
+    """Returns True if the request has a valid JWT access token cookie."""
+    try:
+        auth = CookieJWTAuthentication()
+        user_auth = auth.authenticate(request)
+        return user_auth is not None
+    except (InvalidToken, TokenError):
+        return False
+
 def landing(request):
     return render(request, 'pages/landing.html', LANDING_CONTEXT)
 
 def login_page(request):
+    # Redirect to chat if already logged in
+    if _check_auth(request):
+        return redirect('/chat/')
     return render(request, 'pages/auth.html')
 
 def signup_page(request):
+    # Redirect to chat if already logged in
+    if _check_auth(request):
+        return redirect('/chat/')
     return render(request, 'pages/auth.html')
 
 def chat_page(request):
+    # Redirect to auth if not logged in
+    if not _check_auth(request):
+        return redirect('/auth/')
     return render(request, 'pages/chat.html')
 
 def history_page(request):
+    if not _check_auth(request):
+        return redirect('/auth/')
     return render(request, 'pages/history.html')
 
 def leaderboard_page(request):
     return render(request, 'pages/leaderboard.html')
 
 def profile_page(request):
+    if not _check_auth(request):
+        return redirect('/auth/')
     return render(request, 'pages/profile.html')
