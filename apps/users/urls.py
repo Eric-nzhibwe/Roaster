@@ -16,11 +16,16 @@ def csrf_seed(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def cookie_token_refresh(request):
-    """
-    Read the refresh token from the httpOnly cookie (not the request body)
-    and issue a new access token cookie.
-    """
+    """Read the refresh token from either the httpOnly cookie or a fallback header/body."""
     raw_refresh = request.COOKIES.get('refresh_token')
+    if not raw_refresh:
+        raw_refresh = request.data.get('refresh') or request.data.get('refresh_token')
+    if not raw_refresh:
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            raw_refresh = auth_header.split(' ', 1)[1].strip()
+    if not raw_refresh:
+        raw_refresh = request.headers.get('X-Refresh-Token', '')
     if not raw_refresh:
         return Response(
             {'error': 'No refresh token — please sign in again.'},
@@ -36,7 +41,7 @@ def cookie_token_refresh(request):
         )
 
     from django.conf import settings
-    response = Response({'success': True})
+    response = Response({'success': True, 'access': new_access})
     response.set_cookie(
         'access_token', new_access,
         max_age=7 * 24 * 3600,
@@ -49,6 +54,8 @@ def cookie_token_refresh(request):
 
 urlpatterns = [
     path('csrf/',             csrf_seed,            name='api-csrf'),
+    path('login/',            views.django_login,   name='api-login'),
+    path('signup/',           views.django_signup,  name='api-signup'),
     path('firebase-session/', views.firebase_session, name='api-firebase-session'),
     path('token/refresh/',    cookie_token_refresh,  name='api-token-refresh'),
     path('logout/',           views.logout,          name='api-logout'),

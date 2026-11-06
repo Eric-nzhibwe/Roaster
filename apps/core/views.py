@@ -28,7 +28,9 @@ LANDING_CONTEXT = {
 }
 
 def _check_auth(request):
-    """Returns True if the request has a valid JWT access token cookie."""
+    """Returns True if the request is authenticated via Django session or JWT cookie."""
+    if getattr(request.user, 'is_authenticated', False):
+        return True
     try:
         auth = CookieJWTAuthentication()
         user_auth = auth.authenticate(request)

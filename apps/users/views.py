@@ -1,8 +1,11 @@
 import logging
 import threading
+import uuid
 
 import firebase_admin
 from django.conf import settings
+from django.contrib.auth import authenticate, login, logout
+from django.utils.text import slugify
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -41,6 +44,7 @@ def _set_auth_cookies(response, tokens):
         max_age=30 * 24 * 3600,
         httponly=True, secure=secure, samesite='Lax', path='/',
     )
+    return response
 
 
 def _firestore_sync(user, uid, created, email, provider_key):
@@ -139,6 +143,8 @@ def firebase_session(request):
         'success': True,
         'created': created,
         'user':    UserSerializer(user).data,
+        'access':  tokens['access'],
+        'refresh': tokens['refresh'],
     })
     _set_auth_cookies(response, tokens)
 
@@ -154,9 +160,64 @@ def firebase_session(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+def django_signup(request):
+    email = (request.data.get('email') or '').strip().lower()
+    password = request.data.get('password') or ''
+    name = (request.data.get('name') or '').strip()
+
+    if not email or not password:
+        return Response({'error': 'Email and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+    if len(password) < 6:
+        return Response({'error': 'Password must be at least 6 characters long.'}, status=status.HTTP_400_BAD_REQUEST)
+    if User.objects.filter(email__iexact=email).exists():
+        return Response({'error': 'An account with that email already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    base_name = slugify(name) or 'user'
+    username = f'{base_name}-{uuid.uuid4().hex[:8]}'
+    user = User.objects.create_user(username=username, email=email, password=password, first_name=name)
+
+    auth_user = authenticate(request, username=user.username, password=password)
+    if not auth_user:
+        return Response({'error': 'Could not create your account.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    login(request, auth_user)
+    tokens = _get_tokens(auth_user)
+    response = Response({'success': True, 'user': UserSerializer(auth_user).data, 'access': tokens['access'], 'refresh': tokens['refresh']})
+    _set_auth_cookies(response, tokens)
+    return response
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def django_login(request):
+    email = (request.data.get('email') or '').strip().lower()
+    password = request.data.get('password') or ''
+
+    if not email or not password:
+        return Response({'error': 'Email and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email__iexact=email)
+    except User.DoesNotExist:
+        return Response({'error': 'Invalid email or password.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    auth_user = authenticate(request, username=user.username, password=password)
+    if not auth_user:
+        return Response({'error': 'Invalid email or password.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    login(request, auth_user)
+    tokens = _get_tokens(auth_user)
+    response = Response({'success': True, 'user': UserSerializer(auth_user).data, 'access': tokens['access'], 'refresh': tokens['refresh']})
+    _set_auth_cookies(response, tokens)
+    return response
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def logout(request):
+    logout(request)
     response = Response({'success': True})
-    response.delete_cookie('access_token',  path='/')
+    response.delete_cookie('access_token', path='/')
     response.delete_cookie('refresh_token', path='/')
     return response
 

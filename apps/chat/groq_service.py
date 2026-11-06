@@ -160,8 +160,7 @@ def stream_roast(history, intensity='medium', persona='default', bio='', image_b
     system_prompt = build_system_prompt(intensity, persona, bio, topic_blacklist)
     messages = build_messages(history, image_base64, image_mime, system_prompt)
 
-    # Vision model for images, fast text model otherwise
-    model = 'meta-llama/llama-4-scout-17b-16e-instruct' if image_base64 else 'llama-3.3-70b-versatile'
+    model = 'openai/gpt-oss-120b'
 
     stream = client.chat.completions.create(
         model=model,

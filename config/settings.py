@@ -8,7 +8,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-change-in-production')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
+if 'testserver' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('testserver')
 
 # Security hardening (active when DEBUG=False)
 if not DEBUG:
@@ -71,27 +73,47 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
-DATABASE_URL = os.environ.get('DATABASE_URL', '')
-if DATABASE_URL:
-    import urllib.parse as urlparse
-    url = urlparse.urlparse(DATABASE_URL)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': url.path[1:],
-            'USER': url.username,
-            'PASSWORD': url.password,
-            'HOST': url.hostname,
-            'PORT': url.port or 5432,
-        }
-    }
-else:
-    DATABASES = {
-        'default': {
+import urllib.parse as urlparse
+
+
+def get_database_config(database_url=None, use_postgres_local=None):
+    """Return DB settings for local development and production.
+
+    Local SQLite is the default so the app can run without a local Postgres
+    service. Postgres is only used when DATABASE_URL is set to a non-local host,
+    or when USE_POSTGRES_LOCAL is explicitly enabled for localhost development.
+    """
+    if database_url is None:
+        database_url = os.environ.get('DATABASE_URL', '').strip()
+    if use_postgres_local is None:
+        use_postgres_local = os.environ.get('USE_POSTGRES_LOCAL', '').strip().lower() in {'1', 'true', 'yes', 'on'}
+
+    if not database_url:
+        return {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
         }
+
+    url = urlparse.urlparse(database_url)
+    host = (url.hostname or '').lower()
+    if host in {'localhost', '127.0.0.1', '::1'} and not use_postgres_local:
+        print('[settings] DATABASE_URL points to localhost Postgres but USE_POSTGRES_LOCAL is not enabled; falling back to SQLite for local development.')
+        return {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+
+    return {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': url.path[1:],
+        'USER': url.username,
+        'PASSWORD': url.password,
+        'HOST': url.hostname,
+        'PORT': url.port or 5432,
     }
+
+
+DATABASES = {'default': get_database_config()}
 
 AUTH_USER_MODEL = 'users.User'
 
