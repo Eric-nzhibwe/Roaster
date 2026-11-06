@@ -28,6 +28,13 @@
     clear()    { try { sessionStorage.removeItem(this.KEY) } catch { /* ignore */ } },
   }
 
+  const TokenStore = {
+    KEY: 'rs_refresh_token',
+    get() { try { return localStorage.getItem(this.KEY) || '' } catch { return '' } },
+    set(value) { try { if (value) localStorage.setItem(this.KEY, value); else localStorage.removeItem(this.KEY) } catch { /* quota */ } },
+    clear() { try { localStorage.removeItem(this.KEY) } catch { /* ignore */ } },
+  }
+
   // ─── In-flight deduplication ──────────────────────────────────────────────
   // If two calls to verifySession() fire at the same time, we only want one
   // network request. The second caller shares the same Promise.
@@ -39,6 +46,10 @@
   function _csrfFromCookie() {
     const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/)
     return m ? decodeURIComponent(m[1]) : ''
+  }
+
+  function _hasRefreshCookie() {
+    return document.cookie.split(';').some(part => part.trim().startsWith('refresh_token='))
   }
 
   async function _csrf() {
@@ -62,6 +73,12 @@
         let res = await fetch(EP.ME, { credentials: 'include' })
 
         if (res.status === 401) {
+          const hasRefresh = _hasRefreshCookie() || !!TokenStore.get()
+          if (!hasRefresh) {
+            Store.clear()
+            return null
+          }
+
           // Try refreshing the access token once
           const refreshed = await _refreshToken()
           if (refreshed) {
@@ -94,12 +111,31 @@
   async function _refreshToken() {
     try {
       const csrf = await _csrf()
-      const res  = await fetch(EP.REFRESH, {
+      const refreshToken = TokenStore.get()
+      const headers = { 'X-CSRFToken': csrf }
+      const payload = refreshToken ? { refresh: refreshToken } : null
+
+      if (!refreshToken && !_hasRefreshCookie()) {
+        return false
+      }
+
+      const res = await fetch(EP.REFRESH, {
         method:      'POST',
         credentials: 'include',
-        headers:     { 'X-CSRFToken': csrf },
+        headers:     payload ? { ...headers, 'Content-Type': 'application/json' } : headers,
+        body:        payload ? JSON.stringify(payload) : undefined,
       })
-      return res.ok
+
+      if (!res.ok) return false
+      try {
+        const data = await res.json()
+        if (data && data.access && data.refresh) {
+          TokenStore.set(data.refresh)
+        }
+      } catch {
+        // ignore non-JSON responses
+      }
+      return true
     } catch {
       return false
     }
@@ -136,6 +172,7 @@
       return { ok: false, error: data.error || 'Unexpected server response.' }
     }
 
+    if (data.refresh) TokenStore.set(data.refresh)
     // Cache immediately — the next page load reads this before hitting the server
     if (data.user) Store.set(data.user)
     return { ok: true, user: data.user, created: data.created }
@@ -176,160 +213,114 @@
 
   const Session = {
 
-    /**
-     * Returns the current user.
-     * - Serves from cache immediately if available (zero latency on page load after login)
-     * - Always revalidates in background; updates cache for next call
-     * - Concurrent calls share one network request
-     */
-    async currentUser() {
-      const cached = Store.get()
-
-      // Fire background revalidation — don't await it when we have a cache hit
-      const serverCheck = _verifySession()
-
-      if (cached) {
-        // Return cache now; background check will refresh it silently
-        serverCheck.then(fresh => {
-          if (!fresh) Store.clear() // session expired — cleared for next navigation
-        })
-        return cached
-      }
-
-      // No cache — must wait for server
-      return serverCheck
-    },
-
-    /**
-     * Sign in with Google popup.
-     * Returns { ok: true, user } or { ok: false, error } or { ok: false, cancelled: true }
-     */
-    async signInWithGoogle() {
-      const { GoogleAuthProvider, signInWithPopup } = window.firebaseAuth
-      const provider = new GoogleAuthProvider()
-      provider.addScope('email')
-      provider.addScope('profile')
-      provider.setCustomParameters({ prompt: 'select_account' })
-
-      let cred
-      try {
-        cred = await signInWithPopup(window._firebaseAuth, provider)
-      } catch (err) {
-        const msg = _fbError(err)
-        return msg === null ? { ok: false, cancelled: true } : { ok: false, error: msg }
-      }
-
-      let idToken
-      try { idToken = await cred.user.getIdToken(true) }
-      catch { return { ok: false, error: 'Could not verify Google credentials. Please try again.' } }
-
-      return _createSession(idToken, cred.user.displayName || '')
-    },
-
-    /**
-     * Sign in with email + password.
-     * Returns { ok: true, user } or { ok: false, error }
-     */
-    async signInWithEmail(email, password) {
-      if (!email || !password) return { ok: false, error: 'Email and password are required.' }
-
-      const { signInWithEmailAndPassword } = window.firebaseAuth
-      let cred
-      try {
-        cred = await signInWithEmailAndPassword(window._firebaseAuth, email.trim(), password)
-      } catch (err) {
-        return { ok: false, error: _fbError(err) || 'Sign-in failed. Please try again.' }
-      }
-
-      let idToken
-      try { idToken = await cred.user.getIdToken(true) }
-      catch { return { ok: false, error: 'Could not verify credentials. Please try again.' } }
-
-      return _createSession(idToken)
-    },
-
-    /**
-     * Create a new account with email + password.
-     * Rolls back the Firebase account if Django rejects the token.
-     * Returns { ok: true, user, created: true } or { ok: false, error }
-     */
-    async createAccount(name, email, password) {
-      if (!name || !email || !password) return { ok: false, error: 'All fields are required.' }
-
-      const { createUserWithEmailAndPassword, updateProfile, deleteUser } = window.firebaseAuth
-      let cred
-
-      try {
-        cred = await createUserWithEmailAndPassword(window._firebaseAuth, email.trim(), password)
-      } catch (err) {
-        return { ok: false, error: _fbError(err) || 'Could not create account. Please try again.' }
-      }
-
-      try { await updateProfile(cred.user, { displayName: name.trim() }) } catch { /* non-fatal */ }
-
-      let idToken
-      try { idToken = await cred.user.getIdToken(true) }
-      catch {
-        try { await deleteUser(cred.user) } catch { /* best-effort rollback */ }
-        return { ok: false, error: 'Could not verify new account. Please try again.' }
-      }
-
-      const result = await _createSession(idToken, name.trim())
-
-      if (!result.ok) {
-        // Django rejected it — clean up Firebase so the user can retry
-        try { await deleteUser(cred.user) } catch { /* best-effort */ }
-      }
-
-      return result
-    },
-
-    /**
-     * Sign out from both Firebase and Django.
-     */
     async signOut() {
       Store.clear()
-      await Promise.allSettled([
-        window._firebaseAuth.signOut(),
-        (async () => {
-          const csrf = await _csrf()
-          return fetch(EP.LOGOUT, {
-            method:      'POST',
-            credentials: 'include',
-            headers:     { 'X-CSRFToken': csrf },
-          })
-        })(),
-      ])
+      TokenStore.clear()
+      try {
+        const csrf = await _csrf()
+        await fetch(EP.LOGOUT, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'X-CSRFToken': csrf },
+        })
+      } catch {
+        // ignore logout errors
+      }
       window.location.href = ROUTES.HOME
     },
 
-    /**
-     * Send a password reset email.
-     * Returns { ok: true } or { ok: false, error }
-     */
-    async sendPasswordReset(email) {
-      if (!email) return { ok: false, error: 'Email is required.' }
-      try {
-        const { sendPasswordResetEmail } = window.firebaseAuth
-        await sendPasswordResetEmail(window._firebaseAuth, email.trim())
-        return { ok: true }
-      } catch (err) {
-        return { ok: false, error: _fbError(err) || 'Failed to send reset email. Try again.' }
+    async currentUser() {
+      const cached = Store.get()
+      const serverCheck = (async () => {
+        try {
+          const res = await fetch(EP.ME, { credentials: 'include' })
+          if (res.status === 401) {
+            Store.clear()
+            return null
+          }
+          if (!res.ok) {
+            Store.clear()
+            return null
+          }
+          const { user } = await res.json()
+          if (user) Store.set(user)
+          else Store.clear()
+          return user || null
+        } catch {
+          return cached || null
+        }
+      })()
+
+      if (cached) {
+        serverCheck.then(fresh => {
+          if (!fresh) Store.clear()
+        })
+        return cached
       }
+      return serverCheck
     },
 
-    /**
-     * Redirect to login if not authenticated. Call on any protected page.
-     */
+    async signInWithEmail(email, password) {
+      if (!email || !password) return { ok: false, error: 'Email and password are required.' }
+
+      const csrf = await _csrf()
+      const res = await fetch('/api/auth/login/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf,
+        },
+        body: JSON.stringify({ email: email.trim(), password }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        return { ok: false, error: data.error || data.detail || 'Login failed. Please try again.' }
+      }
+
+      if (data.user) Store.set(data.user)
+      return { ok: true, user: data.user }
+    },
+
+    async createAccount(name, email, password) {
+      if (!name || !email || !password) return { ok: false, error: 'All fields are required.' }
+      if (password.length < 6) return { ok: false, error: 'Password must be at least 6 characters long.' }
+
+      const csrf = await _csrf()
+      const res = await fetch('/api/auth/signup/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf,
+        },
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        return { ok: false, error: data.error || data.detail || 'Signup failed. Please try again.' }
+      }
+
+      if (data.user) Store.set(data.user)
+      return { ok: true, user: data.user }
+    },
+
+    async sendPasswordReset(email) {
+      return { ok: false, error: 'Password reset is currently disabled while using Django auth.' }
+    },
+
+    async signInWithGoogle() {
+      return { ok: false, error: 'Google sign-in is temporarily disabled while auth is handled by Django.' }
+    },
+
     guardPage() {
       this.currentUser().then(user => {
         if (!user) window.location.href = ROUTES.LOGIN
       })
     },
 
-    /**
-     * Redirect to chat if already authenticated. Call on the login page.
-     */
     redirectIfLoggedIn() {
       this.currentUser().then(user => {
         if (user) window.location.href = ROUTES.CHAT

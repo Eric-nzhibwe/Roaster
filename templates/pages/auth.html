@@ -733,22 +733,18 @@
   }
 
   // ── Redirect already-authed users before showing the form ──
-  onAuthReady(function () { Session.redirectIfLoggedIn() })
+  onAuthReady(function () {
+    const googleBtn = document.getElementById('google-btn')
+    if (googleBtn) {
+      googleBtn.style.display = 'none'
+      const divider = document.querySelector('.auth-divider')
+      if (divider) divider.style.display = 'none'
+    }
+    Session.redirectIfLoggedIn()
+  })
 
   // ── Wire up all auth interactions after roaster-session.js is ready ──
   onAuthReady(function () {
-
-    // Google
-    const googleBtn = document.getElementById('google-btn')
-    googleBtn.addEventListener('click', async () => {
-      clearAlerts()
-      const orig = googleBtn.innerHTML
-      setLoading(googleBtn, true, orig)
-      const result = await Session.signInWithGoogle()
-      if (result.ok) { window.location.href = '/chat/'; return }
-      setLoading(googleBtn, false, orig)
-      if (!result.cancelled && result.error) showError(result.error)
-    })
 
     // Sign In
     document.getElementById('signin-form').addEventListener('submit', async (e) => {
