@@ -4,8 +4,6 @@ import uuid
 
 import firebase_admin
 from django.conf import settings
-from django.contrib.auth import authenticate
-from django.contrib.auth import login as django_auth_login
 from django.contrib.auth import logout as django_auth_logout
 from django.utils.text import slugify
 from rest_framework import status
@@ -163,9 +161,9 @@ def firebase_session(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def django_signup(request):
-    email = (request.data.get('email') or '').strip().lower()
+    email    = (request.data.get('email') or '').strip().lower()
     password = request.data.get('password') or ''
-    name = (request.data.get('name') or '').strip()
+    name     = (request.data.get('name') or '').strip()
 
     if not email or not password:
         return Response({'error': 'Email and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -175,16 +173,19 @@ def django_signup(request):
         return Response({'error': 'An account with that email already exists.'}, status=status.HTTP_400_BAD_REQUEST)
 
     base_name = slugify(name) or 'user'
-    username = f'{base_name}-{uuid.uuid4().hex[:8]}'
-    user = User.objects.create_user(username=username, email=email, password=password, first_name=name)
+    username  = f'{base_name}-{uuid.uuid4().hex[:8]}'
+    user      = User.objects.create_user(
+        username=username, email=email, password=password, first_name=name
+    )
 
-    auth_user = authenticate(request, username=user.username, password=password)
-    if not auth_user:
-        return Response({'error': 'Could not create your account.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    django_auth_login(request, auth_user)
-    tokens = _get_tokens(auth_user)
-    response = Response({'success': True, 'user': UserSerializer(auth_user).data, 'access': tokens['access'], 'refresh': tokens['refresh']})
+    # Issue JWT directly — no need to re-authenticate a user we just created
+    tokens   = _get_tokens(user)
+    response = Response({
+        'success': True,
+        'user':    UserSerializer(user).data,
+        'access':  tokens['access'],
+        'refresh': tokens['refresh'],
+    })
     _set_auth_cookies(response, tokens)
     return response
 
@@ -192,7 +193,7 @@ def django_signup(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def django_login(request):
-    email = (request.data.get('email') or '').strip().lower()
+    email    = (request.data.get('email') or '').strip().lower()
     password = request.data.get('password') or ''
 
     if not email or not password:
@@ -203,13 +204,17 @@ def django_login(request):
     except User.DoesNotExist:
         return Response({'error': 'Invalid email or password.'}, status=status.HTTP_401_UNAUTHORIZED)
 
-    auth_user = authenticate(request, username=user.username, password=password)
-    if not auth_user:
+    # Check password directly — avoids allauth/social-auth backend interference
+    if not user.check_password(password):
         return Response({'error': 'Invalid email or password.'}, status=status.HTTP_401_UNAUTHORIZED)
 
-    django_auth_login(request, auth_user)
-    tokens = _get_tokens(auth_user)
-    response = Response({'success': True, 'user': UserSerializer(auth_user).data, 'access': tokens['access'], 'refresh': tokens['refresh']})
+    tokens   = _get_tokens(user)
+    response = Response({
+        'success': True,
+        'user':    UserSerializer(user).data,
+        'access':  tokens['access'],
+        'refresh': tokens['refresh'],
+    })
     _set_auth_cookies(response, tokens)
     return response
 
