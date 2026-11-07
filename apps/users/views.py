@@ -4,7 +4,9 @@ import uuid
 
 import firebase_admin
 from django.conf import settings
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate
+from django.contrib.auth import login as django_auth_login
+from django.contrib.auth import logout as django_auth_logout
 from django.utils.text import slugify
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -180,7 +182,7 @@ def django_signup(request):
     if not auth_user:
         return Response({'error': 'Could not create your account.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    login(request, auth_user)
+    django_auth_login(request, auth_user)
     tokens = _get_tokens(auth_user)
     response = Response({'success': True, 'user': UserSerializer(auth_user).data, 'access': tokens['access'], 'refresh': tokens['refresh']})
     _set_auth_cookies(response, tokens)
@@ -205,7 +207,7 @@ def django_login(request):
     if not auth_user:
         return Response({'error': 'Invalid email or password.'}, status=status.HTTP_401_UNAUTHORIZED)
 
-    login(request, auth_user)
+    django_auth_login(request, auth_user)
     tokens = _get_tokens(auth_user)
     response = Response({'success': True, 'user': UserSerializer(auth_user).data, 'access': tokens['access'], 'refresh': tokens['refresh']})
     _set_auth_cookies(response, tokens)
@@ -215,7 +217,7 @@ def django_login(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def logout(request):
-    logout(request)
+    django_auth_logout(request)
     response = Response({'success': True})
     response.delete_cookie('access_token', path='/')
     response.delete_cookie('refresh_token', path='/')
