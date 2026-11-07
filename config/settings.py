@@ -110,6 +110,7 @@ def get_database_config(database_url=None, use_postgres_local=None):
         'PASSWORD': url.password,
         'HOST': url.hostname,
         'PORT': url.port or 5432,
+        'OPTIONS': {'sslmode': 'require'},
     }
 
 
